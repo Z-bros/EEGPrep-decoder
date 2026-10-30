@@ -4,10 +4,10 @@ A modular, reproducible Python toolkit for EEG preprocessing and decoding.
 Reusable functions instead of notebook code, built on the scientific Python
 stack (NumPy, SciPy, MNE-Python, scikit-learn).
 
-> **Status: pre-alpha (Phase 2a — array adapter and filtering).** Available:
-> `to_raw`, `bandpass`, `notch`. Re-referencing, resampling, epoching,
-> artifact rejection, features, and decoding are developed incrementally and
-> are not available yet.
+> **Status: pre-alpha (Phase 2b — filtering, re-referencing, resampling).**
+> Available: `to_raw`, `bandpass`, `notch`, `rereference`, `resample`.
+> Epoching, artifact rejection, features, and decoding are developed
+> incrementally and are not available yet.
 
 ## Installation
 
@@ -40,7 +40,7 @@ print(cfg.to_dict())          # {'seed': 42, 'float_dtype': 'float64'}
 ```python
 import numpy as np
 from eeg_decoder.io import to_raw
-from eeg_decoder.preprocessing import bandpass, notch
+from eeg_decoder.preprocessing import bandpass, notch, rereference, resample
 
 data_uv = np.random.default_rng(0).normal(0, 10, size=(8, 2500))  # (channels, samples)
 raw = to_raw(data_uv, sfreq=250.0,
@@ -49,7 +49,12 @@ raw = to_raw(data_uv, sfreq=250.0,
 
 raw = notch(raw, [50.0, 100.0])              # line noise: say 50 or 60 Hz explicitly
 raw = bandpass(raw, l_freq=1.0, h_freq=40.0) # returns a new object each time
+raw = rereference(raw, "average")            # or e.g. ["M1", "M2"]; no default
+raw = resample(raw, 125.0)                   # after low-pass; before epoching
 ```
+
+Recommended order: mark bad channels -> filter -> re-reference -> resample
+-> epoch. Each step returns a new object.
 
 Functions take and return MNE objects (`mne.io.Raw`), so channel names,
 types, sampling rate, and units travel with the signal. NumPy arrays enter
@@ -62,6 +67,26 @@ once, through `to_raw`.
 | `io.to_raw` | array `(n_channels, n_samples)`, `sfreq`, `ch_names`, `ch_types`, `units` | `mne.io.RawArray`; voltage channels in volts | Rejects empty arrays, transposed-looking input, NaN/Inf, duplicate names, and (optionally) voltage channels above 10 mV. Stim/misc channels are never rescaled |
 | `preprocessing.bandpass` | continuous `mne.io.BaseRaw`, `l_freq`, `h_freq` (either may be `None`) | filtered copy | Requires `0 < l_freq < h_freq < sfreq/2` and a recording longer than the filter; rejects `Epochs` |
 | `preprocessing.notch` | continuous `mne.io.BaseRaw`, explicit `freqs` | filtered copy | Frequencies at or above Nyquist raise, never silently dropped; recording must be longer than the filter |
+| `preprocessing.rereference` | `mne.io.BaseRaw` or `mne.Epochs`, `ref` (`"average"` or EEG channel list), `allow_bads=False` | re-referenced copy | Only EEG changes; raises if bad EEG channels exist unless `allow_bads=True`; reference channels must exist, be EEG, and not be bad |
+| `preprocessing.resample` | continuous `mne.io.BaseRaw`, `sfreq`, `method` (`"fft"`/`"polyphase"`) | resampled copy, `round(n * new/old)` samples | Anti-aliased; stim codes kept; raises if stim events would merge; rejects `Epochs` |
+
+**Bad channels and re-referencing.** MNE leaves channels marked bad out of
+the reference *and does not re-reference them*, so they stay in the old
+reference (verified on MNE 1.13, for both average and channel references).
+`rereference` therefore raises when bad EEG channels are present: interpolate
+(`raw.interpolate_bads()`, needs electrode positions) or drop them first, or
+pass `allow_bads=True` to accept the mixed result. The average reference is
+only a good approximation of a neutral reference with many, evenly spread
+electrodes.
+
+**Resampling and events.** Stim-channel events move to the nearest new
+sample (at most half a new sample of error: 5 ms at 100 Hz), and their codes
+are kept. Events closer than one new sample would merge, so `resample` raises
+instead of silently dropping one. Annotations are in seconds and are
+unaffected. Extract events arrays *after* resampling. `"fft"` is an ideal
+cut at the new Nyquist; `"polyphase"` rolls off earlier (a 45 Hz tone keeps
+~93 % of its amplitude at 100 Hz). Low-pass first and the difference stops
+mattering.
 
 **Which channels are filtered.** With the default `picks=None`, both filters
 process EEG channels, *including those marked bad*, and leave EOG, ECG, EMG,
@@ -125,8 +150,12 @@ Pre-alpha; the API will change.
 
 - Only FIR filtering is exposed; IIR filters and custom transition bandwidths
   are not yet configurable.
-- Notch filtering is not recorded in `raw.info` (band-pass cutoffs are).
-  A full processing record arrives with the pipeline configuration (Phase 2d).
+- Notch filtering is not recorded in `raw.info` (band-pass cutoffs are), and
+  `info["custom_ref_applied"]` records *that* a reference was changed but not
+  *which* one. A full processing record arrives with the pipeline
+  configuration (Phase 2d).
+- No REST reference, and no restoring of an unrecorded online reference
+  electrode (`mne.add_reference_channels`).
 - No file readers yet: load recordings with MNE (e.g. `mne.io.read_raw_edf`)
   and pass the resulting `Raw` object in directly.
 
