@@ -51,10 +51,22 @@ class SyntheticEpochs:
     alpha_amp_by_class_v: tuple[float, float]
 
 
+def _n_samples(duration_s: float, name: str) -> int:
+    """Duration -> sample count, rejecting values that give no samples."""
+    if isinstance(duration_s, bool) or not isinstance(duration_s, (int, float)):
+        raise TypeError(f"{name} must be a number, got {type(duration_s).__name__}.")
+    if not np.isfinite(duration_s) or duration_s <= 0:
+        raise ValueError(f"{name} must be finite and > 0, got {duration_s}.")
+    n = int(round(duration_s * SFREQ))
+    if n < 1:
+        raise ValueError(f"{name}={duration_s} s is shorter than one sample at {SFREQ} Hz.")
+    return n
+
+
 def make_continuous(seed: int = FIXTURE_SEED, duration_s: float = 10.0) -> SyntheticContinuous:
     """10 Hz alpha + 50 Hz line noise + white noise, per channel random phase."""
     rng = np.random.default_rng(seed)
-    n_ch, n_samp = len(CH_NAMES), int(round(duration_s * SFREQ))
+    n_ch, n_samp = len(CH_NAMES), _n_samples(duration_s, "duration_s")
     t = np.arange(n_samp) / SFREQ
     phase_a = rng.uniform(0, 2 * np.pi, size=(n_ch, 1))
     phase_l = rng.uniform(0, 2 * np.pi, size=(n_ch, 1))
@@ -69,12 +81,21 @@ def make_continuous(seed: int = FIXTURE_SEED, duration_s: float = 10.0) -> Synth
 def make_epochs(
     seed: int = FIXTURE_SEED, n_epochs: int = 40, epoch_s: float = 2.0
 ) -> SyntheticEpochs:
-    """Balanced two-class epochs; alpha amplitude 10 uV (class 0) vs 20 uV (class 1)."""
+    """Two-class epochs; alpha amplitude 10 uV (class 0) vs 20 uV (class 1).
+
+    Classes are as balanced as possible: equal counts for even ``n_epochs``,
+    class 0 has one extra epoch for odd ``n_epochs``. At least 2 epochs are
+    required so both classes are present.
+    """
+    if isinstance(n_epochs, bool) or not isinstance(n_epochs, (int, np.integer)):
+        raise TypeError(f"n_epochs must be an int, got {type(n_epochs).__name__}.")
+    if n_epochs < 2:
+        raise ValueError(f"n_epochs must be >= 2 so both classes occur, got {n_epochs}.")
     rng = np.random.default_rng(seed)
-    n_ch, n_samp = len(CH_NAMES), int(round(epoch_s * SFREQ))
+    n_ch, n_samp = len(CH_NAMES), _n_samples(epoch_s, "epoch_s")
     t = np.arange(n_samp) / SFREQ
     amps = (10e-6, 20e-6)
-    labels = np.tile([0, 1], n_epochs // 2)
+    labels = np.arange(n_epochs) % 2
     rng.shuffle(labels)
     phase = rng.uniform(0, 2 * np.pi, size=(n_epochs, n_ch, 1))
     amp = np.asarray(amps)[labels][:, None, None]

@@ -78,6 +78,39 @@ def test_invalid_sfreq(sfreq, exc):
         to_raw(np.zeros((2, 10)), sfreq, ["a", "b"])
 
 
+@pytest.mark.parametrize("shape, match", [((2, 0), "no samples"), ((0, 10), "no channels"),
+                                          ((0, 0), "no channels")])
+def test_empty_recordings_rejected(shape, match):
+    with pytest.raises(ValueError, match=match):
+        to_raw(np.zeros(shape), SFREQ, [f"c{i}" for i in range(shape[0])])
+
+
+def test_single_sample_recording_is_accepted():
+    # Length requirements belong to later operations (e.g. filters), not to I/O.
+    raw = to_raw(np.full((2, 1), 1e-6), SFREQ, ["a", "b"])
+    assert raw.n_times == 1
+
+
+def test_stim_channel_not_unit_converted_or_amplitude_checked():
+    data = np.zeros((2, 100))
+    data[0] = 20.0  # 20 uV EEG
+    data[1, [10, 50]] = [1, 255]  # event codes
+    raw = to_raw(data, SFREQ, ["Cz", "STI"], ["eeg", "stim"], units="uV")
+    np.testing.assert_allclose(raw.get_data(picks="Cz"), 20e-6)
+    np.testing.assert_array_equal(raw.get_data(picks="STI")[0, [10, 50]], [1, 255])
+
+
+def test_amplitude_check_only_on_voltage_channels():
+    data = np.zeros((2, 10))
+    data[1] = 0.05  # 50 mV on a misc channel: arbitrary units, not checked
+    to_raw(data, SFREQ, ["Cz", "MISC"], ["eeg", "misc"])
+    data[0] = 0.05  # 50 mV on EEG: rejected (heuristic)...
+    with pytest.raises(ValueError, match="heuristic"):
+        to_raw(data, SFREQ, ["Cz", "MISC"], ["eeg", "misc"])
+    raw = to_raw(data, SFREQ, ["Cz", "MISC"], ["eeg", "misc"], check_amplitude=False)
+    np.testing.assert_array_equal(raw.get_data(), data)  # ...override leaves values intact
+
+
 def test_invalid_units_and_dtype():
     with pytest.raises(ValueError, match="units"):
         to_raw(np.zeros((2, 10)), SFREQ, ["a", "b"], units="microvolts")

@@ -117,6 +117,87 @@ def test_picks_limits_filtered_channels(continuous_raw):
     assert not np.array_equal(out.get_data()[0], continuous_raw.get_data()[0])
 
 
+# --- which channels picks=None touches (pins MNE 1.13 behaviour) ------------
+
+
+def _mixed_raw():
+    rng = np.random.default_rng(0)
+    names = ["Fz", "Cz", "Pz", "EOG", "ECG", "EMG", "MISC", "STI"]
+    types = ["eeg", "eeg", "eeg", "eog", "ecg", "emg", "misc", "stim"]
+    data = rng.normal(0, 10e-6, (len(names), 5000))
+    data[-1] = 0.0
+    data[-1, ::500] = 1  # event codes
+    raw = to_raw(data, SFREQ, names, types)
+    raw.info["bads"] = ["Pz"]
+    return raw
+
+
+def _changed(before, after):
+    return [n for i, n in enumerate(before.ch_names)
+            if not np.array_equal(before.get_data()[i], after.get_data()[i])]
+
+
+@pytest.mark.parametrize("op", [lambda r: bandpass(r, 1.0, 40.0), lambda r: notch(r, 50.0)])
+def test_picks_none_filters_eeg_including_bads_only(op):
+    raw = _mixed_raw()
+    out = op(raw)
+    assert _changed(raw, out) == ["Fz", "Cz", "Pz"]  # Pz is bad but still filtered
+    assert out.info["bads"] == ["Pz"]
+    np.testing.assert_array_equal(out.get_data(picks="STI"), raw.get_data(picks="STI"))
+
+
+def test_explicit_picks_can_include_eog():
+    raw = _mixed_raw()
+    assert _changed(raw, bandpass(raw, 1.0, 40.0, picks=["eeg", "eog"])) == ["Fz", "Cz", "Pz", "EOG"]
+
+
+def test_subset_picks_do_not_update_info_cutoffs(continuous_raw):
+    out = bandpass(continuous_raw, 1.0, 40.0, picks=["Fz"])
+    assert (out.info["highpass"], out.info["lowpass"]) == (0.0, SFREQ / 2)
+
+
+# --- empty and short recordings ---------------------------------------------
+
+
+def _short_raw(n_samples):
+    t = np.arange(n_samples) / SFREQ
+    return to_raw(np.tile(1e-5 * np.sin(2 * np.pi * 10 * t), (2, 1)), SFREQ, ["a", "b"])
+
+
+@pytest.mark.parametrize("n_samples", [1, 5, 250, 824])
+@pytest.mark.parametrize("op", [lambda r: bandpass(r, 1.0, 40.0), lambda r: notch(r, 50.0)])
+def test_too_short_recording_raises(n_samples, op):
+    # 1-40 Hz band-pass needs 825 samples, 50 Hz notch 1651 (at 250 Hz).
+    raw = _short_raw(n_samples)
+    before = raw.get_data().copy()
+    with pytest.raises(ValueError, match="too short"):
+        op(raw)
+    np.testing.assert_array_equal(raw.get_data(), before)
+
+
+def test_short_recording_ok_when_filter_fits():
+    bandpass(_short_raw(825), 1.0, 40.0)  # exactly the filter length
+    bandpass(_short_raw(250), None, 40.0)  # low-pass alone needs only 83 samples
+    notch(_short_raw(1651), 50.0)
+
+
+@pytest.mark.parametrize("level", ["error", "critical"])
+def test_short_check_independent_of_mne_log_level(level):
+    with mne.use_log_level(level):
+        with pytest.raises(ValueError, match="too short"):
+            bandpass(_short_raw(100), 1.0, 40.0)
+        assert mne.utils.logger.getEffectiveLevel() >= 40  # caller's level restored
+
+
+def test_empty_raw_rejected():
+    raw = _short_raw(10).crop(tmax=0.0)  # MNE keeps one sample; build a 0-sample one
+    empty = mne.io.RawArray(np.zeros((2, 0)), raw.info, verbose="error")
+    with pytest.raises(ValueError, match="empty"):
+        bandpass(empty, 1.0, 40.0)
+    with pytest.raises(ValueError, match="empty"):
+        notch(empty, 50.0)
+
+
 # --- invalid inputs ---------------------------------------------------------
 
 

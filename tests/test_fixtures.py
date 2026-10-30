@@ -5,6 +5,7 @@ CSP) rely on these known spectral properties as ground truth.
 """
 
 import numpy as np
+import pytest
 
 from conftest import ALPHA_HZ, LINE_HZ, make_continuous, make_epochs
 
@@ -53,3 +54,37 @@ def test_epochs_reproducible():
     a, b = make_epochs(seed=3), make_epochs(seed=3)
     np.testing.assert_array_equal(a.data, b.data)
     np.testing.assert_array_equal(a.labels, b.labels)
+
+
+@pytest.mark.parametrize("n_epochs", [2, 3, 5, 41])
+def test_epochs_odd_counts_nearly_balanced(n_epochs):
+    e = make_epochs(n_epochs=n_epochs)
+    assert e.data.shape[0] == e.labels.shape[0] == n_epochs
+    counts = np.bincount(e.labels, minlength=2)
+    assert set(np.unique(e.labels)) == {0, 1}
+    assert counts[0] - counts[1] == n_epochs % 2  # class 0 gets the extra epoch
+
+
+def test_default_epoch_labels_unchanged_by_fix():
+    # The odd-count fix must not change the default fixture other tests rely on.
+    rng = np.random.default_rng(1234)
+    legacy = np.tile([0, 1], 20)
+    rng.shuffle(legacy)
+    np.testing.assert_array_equal(make_epochs().labels, legacy)
+
+
+@pytest.mark.parametrize("n_epochs, exc", [(0, ValueError), (1, ValueError), (-4, ValueError),
+                                           (4.0, TypeError), (True, TypeError)])
+def test_epochs_invalid_counts(n_epochs, exc):
+    with pytest.raises(exc):
+        make_epochs(n_epochs=n_epochs)
+
+
+@pytest.mark.parametrize("bad, exc", [(0, ValueError), (-1.0, ValueError), (1e-4, ValueError),
+                                      (float("nan"), ValueError), (float("inf"), ValueError),
+                                      ("2", TypeError)])
+def test_invalid_durations(bad, exc):
+    with pytest.raises(exc):
+        make_epochs(epoch_s=bad)
+    with pytest.raises(exc):
+        make_continuous(duration_s=bad)

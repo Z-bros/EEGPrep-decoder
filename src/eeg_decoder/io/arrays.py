@@ -15,8 +15,14 @@ import numpy as np
 
 _UNIT_SCALE = {"V": 1.0, "mV": 1e-3, "uV": 1e-6}
 
-# Scalp EEG is tens of microvolts. Anything above 10 mV after conversion to
-# volts almost always means the caller passed microvolts but said "V".
+# MNE channel types whose values are voltages. Only these are unit-converted
+# and amplitude-checked; stim/misc channels hold codes or arbitrary units.
+_VOLTAGE_TYPES = frozenset({"eeg", "eog", "ecg", "emg", "seeg", "ecog", "dbs", "bio"})
+
+# Heuristic, not a physiological limit: referenced scalp EEG is typically
+# tens of microvolts and rarely exceeds a few hundred, so 10 mV leaves a
+# ~100x margin while still catching the common mistake of passing microvolts
+# labelled as volts (a 20 uV signal would appear as 20 V).
 _MAX_PLAUSIBLE_ABS_V = 1e-2
 
 
@@ -45,12 +51,20 @@ def to_raw(
         A single MNE channel type for all channels, or one per channel
         (e.g. ``"eeg"``, ``"eog"``, ``"stim"``).
     units : {"V", "mV", "uV"}, default="V"
-        Units of ``data``. Values are converted to volts, the SI unit MNE
-        uses internally. The conversion is the only change made to values.
+        Units of the **voltage** channels in ``data`` (EEG, EOG, ECG, EMG,
+        sEEG, ECoG, DBS, bio). These are converted to volts, the SI unit MNE
+        uses internally; the conversion is the only change made to values.
+        Other channel types (stim, misc, ...) are copied unchanged, so event
+        codes on a stim channel are never rescaled.
     check_amplitude : bool, default=True
-        If True, raise when any value exceeds 10 mV after conversion, which
-        usually signals a unit mistake. Disable for recordings with large DC
-        offsets (e.g. unreferenced BioSemi data).
+        Sanity check against unit mistakes: raise if any voltage channel
+        exceeds 10 mV after conversion. This is a **heuristic, not a
+        physiological threshold**. Referenced scalp EEG is typically tens of
+        microvolts, so 10 mV mainly catches microvolt data passed with
+        ``units="V"``. Legitimate data can exceed it, e.g. recordings with
+        large electrode DC offsets (unreferenced BioSemi), intracranial
+        channels, or saturated amplifiers. Set ``check_amplitude=False`` for
+        such data. The check never alters values; it only accepts or rejects.
 
     Returns
     -------
@@ -62,9 +76,17 @@ def to_raw(
     TypeError
         If ``sfreq`` is not a real number.
     ValueError
-        On wrong dimensionality, transposed-looking input, mismatched or
-        duplicate channel names, non-finite values, unknown units, invalid
-        sampling frequency, or implausible amplitude.
+        On wrong dimensionality, zero channels or zero samples,
+        transposed-looking input, mismatched or duplicate channel names,
+        non-finite values, unknown units, invalid sampling frequency, or
+        (with ``check_amplitude=True``) implausible amplitude.
+
+    Notes
+    -----
+    Very short recordings (even one sample) are accepted here, because
+    whether a recording is long enough depends on the operation applied
+    later. The filters in :mod:`eeg_decoder.preprocessing` check that
+    themselves.
     """
     if isinstance(sfreq, bool) or not isinstance(sfreq, (int, float, np.number)):
         raise TypeError(f"sfreq must be a real number, got {type(sfreq).__name__}.")
@@ -84,6 +106,10 @@ def to_raw(
 
     ch_names = list(ch_names)
     n_ch, n_samp = arr.shape
+    if n_ch == 0:
+        raise ValueError(f"data has no channels (shape {arr.shape}).")
+    if n_samp == 0:
+        raise ValueError(f"data has no samples (shape {arr.shape}); recording is empty.")
     if len(ch_names) != n_ch:
         hint = (
             " The array looks transposed; expected (n_channels, n_samples)."
@@ -99,15 +125,22 @@ def to_raw(
     if not isinstance(ch_types, str) and len(ch_types) != n_ch:
         raise ValueError(f"len(ch_types)={len(ch_types)} does not match n_channels={n_ch}.")
 
-    volts = arr.astype(np.float64, copy=True) * _UNIT_SCALE[units]
-    if not np.isfinite(volts).all():
+    types = [ch_types] * n_ch if isinstance(ch_types, str) else list(ch_types)
+    is_voltage = np.array([t in _VOLTAGE_TYPES for t in types])
+
+    values = arr.astype(np.float64, copy=True)
+    if not np.isfinite(values).all():
         raise ValueError("data contains NaN or Inf values.")
-    if check_amplitude and n_samp and np.abs(volts).max() > _MAX_PLAUSIBLE_ABS_V:
-        raise ValueError(
-            f"Max |amplitude| is {np.abs(volts).max():.3g} V after converting from "
-            f"{units!r}, above the plausible EEG limit of {_MAX_PLAUSIBLE_ABS_V} V. "
-            "Check `units` (e.g. units='uV'), or pass check_amplitude=False."
-        )
+    values[is_voltage] *= _UNIT_SCALE[units]
+    if check_amplitude and is_voltage.any():
+        peak = np.abs(values[is_voltage]).max()
+        if peak > _MAX_PLAUSIBLE_ABS_V:
+            raise ValueError(
+                f"Max |amplitude| of voltage channels is {peak:.3g} V after converting "
+                f"from {units!r}, above the 10 mV sanity limit (a heuristic, not a "
+                "physiological bound). Check `units` (e.g. units='uV'), or pass "
+                "check_amplitude=False for data with large DC offsets."
+            )
 
     info = mne.create_info(ch_names=ch_names, sfreq=float(sfreq), ch_types=ch_types)
-    return mne.io.RawArray(volts, info, verbose="error")
+    return mne.io.RawArray(values, info, verbose="error")
