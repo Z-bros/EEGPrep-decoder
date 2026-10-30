@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eeg-decoder"
+dynamic = ["version"]
+description = "Modular, reproducible EEG preprocessing and decoding toolkit."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Zidane" }]
+keywords = ["EEG", "signal-processing", "brain-computer-interface", "decoding"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+# Phase 1 imports nothing beyond the standard library at runtime. numpy is
+# declared because the public API is array-based; its lower bound matches
+# MNE-Python 1.13 (numpy>=2.1) so adding MNE in Phase 2 cannot conflict.
+# scipy / mne / scikit-learn are added in the phase that first uses them.
+dependencies = ["numpy>=2.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.dynamic]
+version = { attr = "eeg_decoder.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"

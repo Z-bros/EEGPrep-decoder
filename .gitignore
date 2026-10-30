@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Environments
+.venv/
+venv/
+
+# Test / tooling caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# EEG data must never be committed (size, licensing, privacy)
+*.edf
+*.bdf
+*.fif
+*.fif.gz
+*.set
+*.fdt
+*.vhdr
+*.vmrk
+*.eeg
+*.gdf
+data/
