@@ -4,10 +4,10 @@ A modular, reproducible Python toolkit for EEG preprocessing and decoding.
 Reusable functions instead of notebook code, built on the scientific Python
 stack (NumPy, SciPy, MNE-Python, scikit-learn).
 
-> **Status: pre-alpha (Phase 2b — filtering, re-referencing, resampling).**
-> Available: `to_raw`, `bandpass`, `notch`, `rereference`, `resample`.
-> Epoching, artifact rejection, features, and decoding are developed
-> incrementally and are not available yet.
+> **Status: pre-alpha (Phase 2c — preprocessing operations complete).**
+> Available: `to_raw`, `bandpass`, `notch`, `rereference`, `resample`,
+> `make_epochs`, `baseline_correct`, `reject_epochs`. The composable pipeline,
+> features, and decoding are developed incrementally and are not available yet.
 
 ## Installation
 
@@ -53,8 +53,24 @@ raw = rereference(raw, "average")            # or e.g. ["M1", "M2"]; no default
 raw = resample(raw, 125.0)                   # after low-pass; before epoching
 ```
 
+Epoching, baseline correction, and rejection (continuing from `raw` above,
+for a recording with a stim channel or annotations):
+
+```python
+import mne
+from eeg_decoder.epoching import make_epochs, baseline_correct
+from eeg_decoder.artifacts import reject_epochs
+
+events = mne.find_events(raw)                # extract AFTER resampling
+epochs = make_epochs(raw, events, {"left": 1, "right": 2}, tmin=-0.2, tmax=0.8)
+epochs = baseline_correct(epochs, (None, 0.0))           # pre-stimulus window
+epochs = reject_epochs(epochs, reject={"eeg": 150e-6},   # volts, fixed thresholds
+                       flat={"eeg": 1e-6})
+print(epochs.drop_log)                       # which events were dropped, and why
+```
+
 Recommended order: mark bad channels -> filter -> re-reference -> resample
--> epoch. Each step returns a new object.
+-> epoch -> baseline -> reject. Each step returns a new object.
 
 Functions take and return MNE objects (`mne.io.Raw`), so channel names,
 types, sampling rate, and units travel with the signal. NumPy arrays enter
@@ -69,6 +85,24 @@ once, through `to_raw`.
 | `preprocessing.notch` | continuous `mne.io.BaseRaw`, explicit `freqs` | filtered copy | Frequencies at or above Nyquist raise, never silently dropped; recording must be longer than the filter |
 | `preprocessing.rereference` | `mne.io.BaseRaw` or `mne.Epochs`, `ref` (`"average"` or EEG channel list), `allow_bads=False` | re-referenced copy | Only EEG changes; raises if bad EEG channels exist unless `allow_bads=True`; reference channels must exist, be EEG, and not be bad |
 | `preprocessing.resample` | continuous `mne.io.BaseRaw`, `sfreq`, `method` (`"fft"`/`"polyphase"`) | resampled copy, `round(n * new/old)` samples | Anti-aliased; stim codes kept; raises if stim events would merge; rejects `Epochs` |
+| `epoching.make_epochs` | continuous `mne.io.BaseRaw`, `events` `(n, 3)` int, `event_id` dict, `tmin`, `tmax`, `decim=1` | `mne.Epochs` `(n_epochs, n_channels, n_times)`, no baseline | Raises if a window runs outside the recording (MNE drops silently), on duplicate/unsorted/unknown events, or if `decim` would alias |
+| `epoching.baseline_correct` | `mne.Epochs`, `baseline=(start, end)` in s | corrected copy | Applies to EEG *and* EOG/ECG/EMG, not stim; window must be inside the epoch |
+| `artifacts.reject_epochs` | `mne.Epochs`, `reject`/`flat` dicts in volts per channel type | copy without rejected epochs; `drop_log` per event | Bad channels ignored; raises on thresholds > 10 mV (unit mistake) or if every epoch would be dropped |
+
+**Epoching.** Event samples are absolute (they include `raw.first_samp`),
+as `mne.find_events` returns them. Both `tmin` and `tmax` are included, so
+an epoch has `round((tmax - tmin) * sfreq) + 1` samples. MNE silently drops
+epochs that run past the edges of the recording; `make_epochs` raises
+instead and lists those events. Epochs overlapping `BAD_*` annotations are
+dropped and recorded in `epochs.drop_log`. No baseline is applied implicitly
+(MNE's default is `(None, 0)`), and stored projectors are not applied.
+`decim` must keep the new rate at least 3x `info["lowpass"]` (MNE's own
+rule, which it only warns about).
+
+**Rejection and leakage.** `reject_epochs` uses fixed peak-to-peak
+thresholds chosen by you, so applying it before a train/test split leaks
+nothing. Thresholds derived from the data (e.g. percentiles) would have to
+be fitted on training folds only.
 
 **Bad channels and re-referencing.** MNE leaves channels marked bad out of
 the reference *and does not re-reference them*, so they stay in the old
