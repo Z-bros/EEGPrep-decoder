@@ -21,11 +21,10 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
-# Phase 1 imports nothing beyond the standard library at runtime. numpy is
-# declared because the public API is array-based; its lower bound matches
-# MNE-Python 1.13 (numpy>=2.1) so adding MNE in Phase 2 cannot conflict.
-# scipy / mne / scikit-learn are added in the phase that first uses them.
-dependencies = ["numpy>=2.1"]
+# MNE-Python is the preprocessing backbone (filters, referencing, epochs) and
+# brings SciPy with it. The floor is the version whose API was verified.
+# scikit-learn is added in the phase that first uses it.
+dependencies = ["numpy>=2.1", "mne>=1.13"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

@@ -92,3 +92,12 @@ def continuous_eeg() -> SyntheticContinuous:
 @pytest.fixture
 def epoched_eeg() -> SyntheticEpochs:
     return make_epochs()
+
+
+@pytest.fixture
+def continuous_raw(continuous_eeg):
+    """The continuous fixture wrapped as an ``mne.io.RawArray`` (volts)."""
+    from eeg_decoder.io import to_raw
+
+    d = continuous_eeg
+    return to_raw(d.data, d.sfreq, d.ch_names)
