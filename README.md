@@ -4,10 +4,11 @@ A modular, reproducible Python toolkit for EEG preprocessing and decoding.
 Reusable functions instead of notebook code, built on the scientific Python
 stack (NumPy, SciPy, MNE-Python, scikit-learn).
 
-> **Status: pre-alpha (Phase 2c — preprocessing operations complete).**
-> Available: `to_raw`, `bandpass`, `notch`, `rereference`, `resample`,
-> `make_epochs`, `baseline_correct`, `reject_epochs`. The composable pipeline,
-> features, and decoding are developed incrementally and are not available yet.
+> **Status: pre-alpha (Phase 2 — preprocessing complete).** Available:
+> `to_raw`, `bandpass`, `notch`, `rereference`, `resample`, `make_epochs`,
+> `baseline_correct`, `reject_epochs`, and the `EEGPipeline` /
+> `PreprocessingConfig` that chains them. Features and decoding are developed
+> incrementally and are not available yet.
 
 ## Installation
 
@@ -71,6 +72,50 @@ print(epochs.drop_log)                       # which events were dropped, and wh
 
 Recommended order: mark bad channels -> filter -> re-reference -> resample
 -> epoch -> baseline -> reject. Each step returns a new object.
+
+## Pipeline with a saved configuration
+
+The same chain as a reproducible, shareable configuration. Each step is
+`{"op": <function name>, **that function's keyword arguments}`, so the JSON
+file reads exactly like the Python code above:
+
+```python
+from eeg_decoder.preprocessing import EEGPipeline, PreprocessingConfig
+
+config = PreprocessingConfig([
+    {"op": "notch", "freqs": [50.0, 100.0]},
+    {"op": "bandpass", "l_freq": 1.0, "h_freq": 40.0},
+    {"op": "rereference", "ref": "average"},
+    {"op": "resample", "sfreq": 125.0},
+    {"op": "make_epochs", "event_source": "stim", "stim_channel": "STI",
+     "event_id": {"left": 1, "right": 2}, "tmin": -0.2, "tmax": 0.8},
+    {"op": "baseline_correct", "baseline": [None, 0.0]},
+    {"op": "reject_epochs", "reject": {"eeg": 150e-6}, "flat": {"eeg": 1e-6}},
+])
+config.save("preprocessing.json")            # share / version alongside results
+
+epochs, record = EEGPipeline(config).run(raw, metadata={"subject": "01", "session": "T"})
+```
+
+- **Validated up front.** Unknown steps, misspelled parameters, values JSON
+  cannot store (NaN, NumPy arrays), and impossible orders (e.g. a filter
+  after `make_epochs`, or `baseline_correct` before it) raise when the config
+  is built, before any data are touched. Values that depend on the data
+  (e.g. a cutoff above Nyquist) are checked when the step runs, and the error
+  names the step.
+- **Events** are extracted inside the pipeline at the `make_epochs` step,
+  after any resampling: `"event_source": "stim"` (with `stim_channel`) or
+  `"annotations"` (annotation descriptions matched to `event_id` keys).
+- **The record** is a JSON-serializable dict: the config, Python/package
+  versions, your `metadata`, an input summary, and per step its parameters
+  and output (sampling rate, filter edges, reference, epoch counts, epochs
+  dropped). Running the same config on the same data gives an identical
+  record. The recording's measurement date and subject info are deliberately
+  left out, since they may be identifying.
+- **No leakage.** No step learns anything from the data, so the pipeline can
+  run on the whole dataset before a train/test split.
+- Configs are immutable; `PreprocessingConfig.load(path)` and
+  `config.to_dict()` give editable copies to derive variants from.
 
 Functions take and return MNE objects (`mne.io.Raw`), so channel names,
 types, sampling rate, and units travel with the signal. NumPy arrays enter
@@ -168,6 +213,14 @@ values.
 - Inputs are never modified in place unless a function explicitly says so.
 - Every stochastic operation takes an explicit seed.
 
+## Reproducibility
+
+Save the `PreprocessingConfig` and the `record` from `EEGPipeline.run` with
+your results (`json.dump(record, f, indent=2)`). Together they state what was
+run, on what input, with which package versions, and what came out of each
+step. Phase 2 contains no random operations, so the same config on the same
+data always gives identical output.
+
 ## Development
 
 ```bash
@@ -184,10 +237,11 @@ Pre-alpha; the API will change.
 
 - Only FIR filtering is exposed; IIR filters and custom transition bandwidths
   are not yet configurable.
-- Notch filtering is not recorded in `raw.info` (band-pass cutoffs are), and
-  `info["custom_ref_applied"]` records *that* a reference was changed but not
-  *which* one. A full processing record arrives with the pipeline
-  configuration (Phase 2d).
+- When the functions are called directly, MNE's `raw.info` records band-pass
+  cutoffs but not notch filtering, and only *that* the reference changed.
+  Use `EEGPipeline`, whose record keeps every step's parameters.
+- The pipeline runs one recording at a time; looping over subjects and
+  storing records is up to the caller for now.
 - No REST reference, and no restoring of an unrecorded online reference
   electrode (`mne.add_reference_channels`).
 - No file readers yet: load recordings with MNE (e.g. `mne.io.read_raw_edf`)
