@@ -33,7 +33,9 @@ Design notes
   from the data as it is at that point (i.e. after any resampling).
 * **No step is fitted to data.** Every step is a fixed, per-recording or
   per-epoch operation, so running the pipeline before a train/test split
-  leaks nothing. Learned transforms belong in the decoding stage.
+  leaks nothing. Supervised learned transforms (e.g. CSP) and augmentation
+  are deliberately not steps: they belong in the user's downstream code,
+  applied to training data only.
 * **The record** returned by :meth:`EEGPipeline.run` documents the config,
   package versions, user-supplied metadata, the input, and every step's
   output (sampling rate, size, dropped epochs). It deliberately omits the

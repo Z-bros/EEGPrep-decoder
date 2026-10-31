@@ -1,6 +1,8 @@
-"""EEG_Decoder: modular, reproducible EEG preprocessing and decoding.
+"""EEGPrep-decoder: model-agnostic, reproducible EEG preprocessing and data preparation.
 
-Phase 1 exposes only the package version and the core configuration object.
+The top-level namespace exposes the package version and the core
+configuration object; functionality lives in the subpackages ``io``,
+``preprocessing``, ``epoching``, and ``artifacts``.
 """
 
 from eeg_decoder.config import EEGConfig

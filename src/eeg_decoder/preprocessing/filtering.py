@@ -5,7 +5,7 @@ Scientific assumptions (applied identically by both functions)
 * **Zero-phase FIR** (MNE defaults: ``firwin`` design, Hamming window,
   automatic filter length and transition bandwidth). Zero phase means no
   time shift of waveforms, so ERP latencies are preserved. The filter is
-  non-causal: suitable for offline analysis, not for real-time decoding.
+  non-causal: suitable for offline analysis, not for real-time (online) processing.
 * **Continuous data only.** Filtering short epochs puts the filter's edge
   transient inside every trial; filter the recording first, then epoch.
   Passing ``mne.Epochs`` raises ``TypeError``.

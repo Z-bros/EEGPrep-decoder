@@ -1,7 +1,8 @@
 """Check that the synthetic fixtures really contain what they claim.
 
-These tests guard the *test infrastructure*: later phases (filtering, PSD,
-CSP) rely on these known spectral properties as ground truth.
+These tests guard the *test infrastructure*: other tests (filtering, and
+later artifact, quality, and feature checks) rely on these known spectral
+properties as ground truth.
 """
 
 import numpy as np

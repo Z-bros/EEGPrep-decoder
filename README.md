@@ -1,14 +1,36 @@
-# EEG_Decoder
+# EEGPrep-decoder
 
-A modular, reproducible Python toolkit for EEG preprocessing and decoding.
-Reusable functions instead of notebook code, built on the scientific Python
-stack (NumPy, SciPy, MNE-Python, scikit-learn).
+A reusable, **model-agnostic** Python library for EEG preprocessing and data
+preparation, inspired by Med_Im_Prepper. Reusable, tested functions instead
+of notebook code, built on NumPy, SciPy, and MNE-Python. The import name is
+`eeg_decoder`.
 
-> **Status: pre-alpha (Phase 2 — preprocessing complete).** Available:
-> `to_raw`, `bandpass`, `notch`, `rereference`, `resample`, `make_epochs`,
+It turns raw recordings into clean, documented, analysis-ready data for any
+downstream use (ERP analysis, statistics, machine learning, deep learning),
+and stops there.
+
+> **Status: pre-alpha (Phases 1-2 complete).** Available: `to_raw`,
+> `bandpass`, `notch`, `rereference`, `resample`, `make_epochs`,
 > `baseline_correct`, `reject_epochs`, and the `EEGPipeline` /
-> `PreprocessingConfig` that chains them. Features and decoding are developed
-> incrementally and are not available yet.
+> `PreprocessingConfig` that chains them. Next: artifact detection and
+> correction. See the [roadmap](docs/ROADMAP.md).
+
+## Scope
+
+**In scope:** preprocessing, artifact detection and correction (including
+bad-channel assessment and optional ICA), signal-quality assessment and
+visualization, *optional* fixed feature extraction (PSD, band power, Hjorth,
+time-frequency), reproducible EEG augmentation, dataset preparation with
+metadata, and export of prepared arrays or MNE objects.
+
+**Out of scope:** classification models, model training, fine-tuning,
+knowledge distillation, and model evaluation frameworks. **Supervised
+learned transformations such as CSP are not part of the library**; they
+belong in your downstream modelling code (e.g. a scikit-learn `Pipeline`
+with `mne.decoding.CSP`), fitted on training data only.
+
+Feature extraction, when added, is optional and independent: preparing EEG
+data never requires it.
 
 ## Installation
 
@@ -22,8 +44,10 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Heavy dependencies (PyTorch, Braindecode, pyRiemann, MOABB) will be optional
-extras so that preprocessing never requires the deep-learning stack.
+The core install needs only NumPy and MNE-Python (which brings SciPy).
+Capabilities with extra requirements (e.g. ICA methods that need
+scikit-learn or `python-picard`, or extra export formats) will be optional
+dependency groups, so preparing data never pulls in a modelling stack.
 
 ## Quick check
 
@@ -113,7 +137,9 @@ epochs, record = EEGPipeline(config).run(raw, metadata={"subject": "01", "sessio
   record. The recording's measurement date and subject info are deliberately
   left out, since they may be identifying.
 - **No leakage.** No step learns anything from the data, so the pipeline can
-  run on the whole dataset before a train/test split.
+  run on the whole dataset before a train/test split. Supervised transforms
+  (e.g. CSP) and augmentation are deliberately not pipeline steps: apply them
+  downstream, to training data only.
 - Configs are immutable; `PreprocessingConfig.load(path)` and
   `config.to_dict()` give editable copies to derive variants from.
 
@@ -188,7 +214,7 @@ values.
 
 - **Zero-phase FIR filters** (MNE `firwin`, Hamming window): no time shift
   of waveforms, so ERP latencies are preserved. Non-causal, so they are for
-  offline analysis, not real-time decoding.
+  offline analysis, not real-time (online) processing.
 - **Cutoffs are passband edges, not -3 dB points.** With MNE's automatic
   transition bands, `l_freq=1` attenuates progressively over 0-1 Hz (-6 dB at
   0.5 Hz), so slow drift *inside* that band is reduced but not removed;
@@ -230,6 +256,22 @@ pytest
 
 No real EEG dataset is needed: tests use seeded synthetic signals with known
 spectral content. Do not commit EEG recordings (see `.gitignore`).
+
+## Roadmap
+
+Full details, design rules, and per-phase considerations:
+[docs/ROADMAP.md](docs/ROADMAP.md).
+
+| Phase | Topic | Status |
+|---|---|---|
+| 1 | Package foundation | Done |
+| 2 | Core preprocessing and `EEGPipeline` | Done |
+| 3 | Artifact detection and correction (bad channels, optional ICA) | Next |
+| 4 | Signal-quality assessment and visualization | Planned |
+| 5 | Optional fixed feature extraction (PSD, band power, Hjorth, time-frequency) | Planned |
+| 6 | EEG data augmentation (seeded, event/label preserving) | Planned |
+| 7 | Dataset preparation, metadata, and export | Planned |
+| 8 | Documentation, benchmarking, and release | Planned |
 
 ## Known limitations
 

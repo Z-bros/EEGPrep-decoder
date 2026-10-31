@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "eeg-decoder"
 dynamic = ["version"]
-description = "Modular, reproducible EEG preprocessing and decoding toolkit."
+description = "Model-agnostic, reproducible EEG preprocessing and data preparation library."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Zidane" }]
-keywords = ["EEG", "signal-processing", "brain-computer-interface", "decoding"]
+keywords = ["EEG", "signal-processing", "preprocessing", "artifacts", "data-preparation", "MNE"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
@@ -23,7 +23,8 @@ classifiers = [
 ]
 # MNE-Python is the preprocessing backbone (filters, referencing, epochs) and
 # brings SciPy with it. The floor is the version whose API was verified.
-# scikit-learn is added in the phase that first uses it.
+# Further requirements (e.g. ICA backends, export formats) are added as optional
+# dependency groups in the phase that needs them; the core stays model-free.
 dependencies = ["numpy>=2.1", "mne>=1.13"]
 
 [project.optional-dependencies]
