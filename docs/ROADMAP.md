@@ -69,7 +69,7 @@ feeds into such code, but that code is not part of the library.
 |---|---|---|
 | 1 | Package foundation | Done |
 | 2 | Core preprocessing and `EEGPipeline` | Done (2a-2d) |
-| 3 | Artifact detection and correction | Next |
+| 3 | Artifact detection and correction | In progress (3a proposed) |
 | 4 | Signal-quality assessment and visualization | Planned |
 | 5 | Optional fixed feature extraction | Planned |
 | 6 | EEG data augmentation | Planned |

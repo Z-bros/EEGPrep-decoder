@@ -58,7 +58,7 @@ from typing import Any
 import mne
 import numpy as np
 
-from eeg_decoder.artifacts import reject_epochs
+from eeg_decoder.artifacts import interpolate_bad_channels, reject_epochs
 from eeg_decoder.epoching import baseline_correct, make_epochs
 from eeg_decoder.preprocessing.filtering import bandpass, notch
 from eeg_decoder.preprocessing.referencing import rereference
@@ -81,6 +81,7 @@ class _Op:
 _OPS: dict[str, _Op] = {
     "notch": _Op(notch, _CONTINUOUS),
     "bandpass": _Op(bandpass, _CONTINUOUS),
+    "interpolate_bad_channels": _Op(interpolate_bad_channels, _BOTH),
     "rereference": _Op(rereference, _BOTH),
     "resample": _Op(resample, _CONTINUOUS),
     "make_epochs": _Op(
@@ -187,7 +188,8 @@ class PreprocessingConfig:
     ----------
     steps : sequence of mapping
         Each ``{"op": name, **kwargs}``. ``op`` is one of ``notch``,
-        ``bandpass``, ``rereference``, ``resample``, ``make_epochs``,
+        ``bandpass``, ``interpolate_bad_channels``, ``rereference``,
+        ``resample``, ``make_epochs``,
         ``baseline_correct``, ``reject_epochs``; the other keys are that
         function's keyword arguments. ``make_epochs`` additionally takes
         ``event_source`` (``"stim"`` or ``"annotations"``) and, for
