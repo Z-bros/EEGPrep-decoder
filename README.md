@@ -9,13 +9,14 @@ It turns raw recordings into clean, documented, analysis-ready data for any
 downstream use (ERP analysis, statistics, machine learning, deep learning),
 and stops there.
 
-> **Status: pre-alpha (Phases 1-2 complete; Phase 3 in progress).**
-> Available: `to_raw`, `bandpass`, `notch`, `rereference`, `resample`,
-> `make_epochs`, `baseline_correct`, `reject_epochs`, the `EEGPipeline` /
+> **Status: pre-alpha (Phases 1-3 complete).** Available: `to_raw`,
+> `bandpass`, `notch`, `rereference`, `resample`, `make_epochs`,
+> `baseline_correct`, `reject_epochs`, the `EEGPipeline` /
 > `PreprocessingConfig` that chains them, and artifact handling
 > (`assess_channels`, `mark_bad_channels`, `interpolate_bad_channels`,
-> `annotate_artifacts`, `add_annotations`). Next: optional ICA. See the
-> [roadmap](docs/ROADMAP.md).
+> `annotate_artifacts`, `add_annotations`, and optional ICA via `fit_ica`,
+> `find_artifact_components`, `apply_ica`). Next: signal-quality assessment
+> and visualization. See the [roadmap](docs/ROADMAP.md).
 
 ## Scope
 
@@ -195,6 +196,36 @@ raw = add_annotations(raw, bad_spans)        # make_epochs drops overlapping epo
   smooth 300 µV blink entirely. Bad channels are ignored, so mark them first.
 - All of these work per recording without labels, so they cause no leakage.
 
+### Optional ICA (blinks, eye movements, heartbeat)
+
+```python
+from eeg_decoder.artifacts import fit_ica, find_artifact_components, apply_ica
+
+ica = fit_ica(raw, n_components=20, seed=42)          # fit on a 1 Hz high-passed copy
+report = find_artifact_components(ica, raw, eog=["EOG"], ecg="ECG")
+print(report.to_dict())                               # proposed indices + correlations
+raw = apply_ica(raw, ica, exclude=report.exclude)     # removes exactly these components
+```
+
+- Three explicit steps: fit (seeded, label-free), *propose* components by
+  correlation with EOG/ECG channels, then remove exactly the indices you
+  pass. `apply_ica` ignores `ica.exclude`; MNE's own `apply(exclude=...)`
+  would remove the union of both.
+- `method="infomax"` (extended Infomax) is the default and needs only MNE.
+  `"picard"` (same model, faster) and `"fastica"` need
+  `pip install eeg-decoder[ica]`. Fitting as many components as channels can
+  be slow with Infomax (a 12-of-12 fit took ~3 min vs ~4 s for 10).
+- **Z-score selection has a ceiling.** With *n* components no component can
+  exceed a z-score of √(n−1), and MNE selects strictly above the threshold,
+  so its default 3.0 never selects anything with ≤ 10 components.
+  `find_artifact_components` raises in that case instead of silently finding
+  nothing; use more components or `measure="correlation"` (e.g. 0.7). MNE
+  also *iterates* the z-scoring, so a low threshold can add components whose
+  correlation is near zero: check the reported correlations before applying.
+- Order: mark bad channels (they are left out of the fit and untouched) ->
+  ICA -> interpolate bad channels -> re-reference. After an average
+  reference use at most (good EEG channels − 1) components.
+
 ### Input/output specification
 
 | Function | Input | Output | Notes |
@@ -314,8 +345,8 @@ Full details, design rules, and per-phase considerations:
 |---|---|---|
 | 1 | Package foundation | Done |
 | 2 | Core preprocessing and `EEGPipeline` | Done |
-| 3 | Artifact detection and correction (bad channels, optional ICA) | In progress (3a-3b done) |
-| 4 | Signal-quality assessment and visualization | Planned |
+| 3 | Artifact detection and correction (bad channels, optional ICA) | Done |
+| 4 | Signal-quality assessment and visualization | Next |
 | 5 | Optional fixed feature extraction (PSD, band power, Hjorth, time-frequency) | Planned |
 | 6 | EEG data augmentation (seeded, event/label preserving) | Planned |
 | 7 | Dataset preparation, metadata, and export | Planned |

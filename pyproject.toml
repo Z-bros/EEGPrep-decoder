@@ -29,6 +29,8 @@ dependencies = ["numpy>=2.1", "mne>=1.13"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+# Only for ICA method="picard" / "fastica"; the default "infomax" needs only MNE.
+ica = ["python-picard>=0.8", "scikit-learn>=1.5"]
 
 [tool.setuptools.dynamic]
 version = { attr = "eeg_decoder.__version__" }
