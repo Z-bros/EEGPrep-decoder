@@ -9,11 +9,13 @@ It turns raw recordings into clean, documented, analysis-ready data for any
 downstream use (ERP analysis, statistics, machine learning, deep learning),
 and stops there.
 
-> **Status: pre-alpha (Phases 1-2 complete).** Available: `to_raw`,
-> `bandpass`, `notch`, `rereference`, `resample`, `make_epochs`,
-> `baseline_correct`, `reject_epochs`, and the `EEGPipeline` /
-> `PreprocessingConfig` that chains them. Next: artifact detection and
-> correction. See the [roadmap](docs/ROADMAP.md).
+> **Status: pre-alpha (Phases 1-2 complete; Phase 3 in progress).**
+> Available: `to_raw`, `bandpass`, `notch`, `rereference`, `resample`,
+> `make_epochs`, `baseline_correct`, `reject_epochs`, the `EEGPipeline` /
+> `PreprocessingConfig` that chains them, and artifact handling
+> (`assess_channels`, `mark_bad_channels`, `interpolate_bad_channels`,
+> `annotate_artifacts`, `add_annotations`). Next: optional ICA. See the
+> [roadmap](docs/ROADMAP.md).
 
 ## Scope
 
@@ -147,6 +149,52 @@ Functions take and return MNE objects (`mne.io.Raw`), so channel names,
 types, sampling rate, and units travel with the signal. NumPy arrays enter
 once, through `to_raw`.
 
+## Artifact handling
+
+Find problems first, review the evidence, then act. Run these on continuous
+data after a high-pass filter and **before** re-referencing to the average.
+
+```python
+from eeg_decoder.artifacts import (
+    assess_channels, mark_bad_channels, interpolate_bad_channels,
+    annotate_artifacts, add_annotations,
+)
+
+report = assess_channels(raw)                # evidence only; data untouched
+print(report.summary())                      # e.g. "T7: deviation", "O1: correlation"
+raw = mark_bad_channels(raw, report.bad)     # or a list you reviewed yourself
+
+raw = raw.copy().set_montage("colin27_1020") # positions needed for interpolation
+raw = interpolate_bad_channels(raw)          # only bad EEG channels change
+
+bad_spans = annotate_artifacts(raw, peak={"eeg": 150e-6}, flat={"eeg": 1e-6})
+raw = add_annotations(raw, bad_spans)        # make_epochs drops overlapping epochs
+```
+
+- **`assess_channels`** checks every EEG channel with five criteria adapted
+  from the PREP pipeline (Bigdely-Shamlo et al., 2015) and its default
+  thresholds: `nan`, `flat`, `deviation` (robust amplitude outlier, too large
+  *or* too small), `correlation` (poorly correlated with every other channel
+  in > 1 % of 1 s windows), and `hf_noise` (outlying share of power above
+  50 Hz; skipped, with the reason, when the data hold none). Robust z-scores
+  use the median and IQR, so bad channels cannot hide each other; at least 3
+  EEG channels are required and more than ~16 are recommended. The result is
+  an immutable, JSON-serializable `ChannelAssessment` with the reasons and
+  per-channel values.
+- **`interpolate_bad_channels`** uses MNE's spherical splines. It refuses
+  when an EEG channel has no position or when more than `max_fraction`
+  (default 20 %) of EEG channels are bad (MNE itself would interpolate 12 of
+  16). Bad non-EEG channels (e.g. EOG) keep their bad mark; MNE alone would
+  silently drop it. It is also available as the pipeline step
+  `{"op": "interpolate_bad_channels"}`; assessment deliberately is not, so a
+  person reviews it.
+- **`annotate_artifacts`** marks spans as `BAD_peak` / `BAD_flat` using a
+  sliding-window peak-to-peak amplitude in volts per channel type, the same
+  quantity `reject_epochs` uses per epoch. It is used instead of MNE's
+  `annotate_amplitude`, which compares consecutive samples and misses a
+  smooth 300 µV blink entirely. Bad channels are ignored, so mark them first.
+- All of these work per recording without labels, so they cause no leakage.
+
 ### Input/output specification
 
 | Function | Input | Output | Notes |
@@ -266,7 +314,7 @@ Full details, design rules, and per-phase considerations:
 |---|---|---|
 | 1 | Package foundation | Done |
 | 2 | Core preprocessing and `EEGPipeline` | Done |
-| 3 | Artifact detection and correction (bad channels, optional ICA) | Next |
+| 3 | Artifact detection and correction (bad channels, optional ICA) | In progress (3a-3b done) |
 | 4 | Signal-quality assessment and visualization | Planned |
 | 5 | Optional fixed feature extraction (PSD, band power, Hjorth, time-frequency) | Planned |
 | 6 | EEG data augmentation (seeded, event/label preserving) | Planned |

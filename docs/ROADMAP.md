@@ -69,7 +69,7 @@ feeds into such code, but that code is not part of the library.
 |---|---|---|
 | 1 | Package foundation | Done |
 | 2 | Core preprocessing and `EEGPipeline` | Done (2a-2d) |
-| 3 | Artifact detection and correction | In progress (3a proposed) |
+| 3 | Artifact detection and correction | In progress (3a-3b done, 3c next) |
 | 4 | Signal-quality assessment and visualization | Planned |
 | 5 | Optional fixed feature extraction | Planned |
 | 6 | EEG data augmentation | Planned |
@@ -103,6 +103,12 @@ These APIs and their tests are kept unchanged by the roadmap revision.
 
 Goal: find and handle bad channels and artifacts before epoching, so that
 re-referencing and epoch rejection work on trustworthy data.
+
+| Sub-phase | Public API | Status |
+|---|---|---|
+| 3a | `artifacts.assess_channels`, `ChannelAssessment`, `mark_bad_channels`, `interpolate_bad_channels` (+ pipeline op) | Done |
+| 3b | `artifacts.annotate_artifacts`, `add_annotations` | Done |
+| 3c | Optional ICA: fit, find EOG/ECG components, apply | Next |
 
 - **Bad-channel assessment** (per recording, no labels): flat or
   near-constant channels, extreme variance or amplitude (robust z-scores),
