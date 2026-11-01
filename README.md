@@ -19,7 +19,7 @@ and stops there.
 > plots (`recording_quality`, `epochs_quality`, `plot_psd_comparison`,
 > `plot_channel_quality`, `plot_rejection_summary`), and optional features
 > (`welch_psd`, `band_power`, `time_stats`, `hjorth`, `morlet_tfr`). Next:
-> dataset preparation, metadata, and export. See the
+> dataset preparation, metadata preservation, and export. See the
 > [roadmap](docs/ROADMAP.md).
 
 ## Scope
@@ -27,18 +27,18 @@ and stops there.
 **In scope:** preprocessing, artifact detection and correction (including
 bad-channel assessment and optional ICA), signal-quality assessment and
 visualization, *optional* fixed feature extraction (PSD, band power, Hjorth,
-time-frequency), dataset preparation with metadata, and export of prepared
-arrays or MNE objects.
+time-frequency), dataset preparation with metadata preservation, export of
+prepared arrays or MNE objects, and scientific validation of the library
+itself.
 
 **Out of scope:** classification models, model training, fine-tuning,
-knowledge distillation, model evaluation frameworks, and data augmentation.
-**Supervised
+knowledge distillation, and model evaluation frameworks. **Supervised
 learned transformations such as CSP are not part of the library**; they
 belong in your downstream modelling code (e.g. a scikit-learn `Pipeline`
 with `mne.decoding.CSP`), fitted on training data only.
 
-Feature extraction, when added, is optional and independent: preparing EEG
-data never requires it.
+Feature extraction is optional and independent: it is not an `EEGPipeline`
+step, and preparing EEG data never requires it.
 
 ## Installation
 
@@ -414,8 +414,9 @@ y = bp.events[:, 2]            # rows align with epochs.events
 Save the `PreprocessingConfig` and the `record` from `EEGPipeline.run` with
 your results (`json.dump(record, f, indent=2)`). Together they state what was
 run, on what input, with which package versions, and what came out of each
-step. Phase 2 contains no random operations, so the same config on the same
-data always gives identical output.
+step. No pipeline step is random, so the same config on the same data always
+gives identical output; the only stochastic operation in the library, ICA,
+requires an explicit seed.
 
 ## Development
 
@@ -439,8 +440,8 @@ Full details, design rules, and per-phase considerations:
 | 3 | Artifact detection and correction (bad channels, optional ICA) | Done |
 | 4 | Signal-quality assessment and visualization | Done |
 | 5 | Optional fixed feature extraction (PSD, band power, Hjorth, time-frequency) | Done |
-| 6 | Dataset preparation, metadata, and export | Next |
-| 7 | Documentation, benchmarking, and release | Planned |
+| 6 | Dataset preparation, metadata preservation, and export | Next |
+| 7 | Scientific validation, documentation, benchmarking, and release | Planned |
 
 ## Known limitations
 

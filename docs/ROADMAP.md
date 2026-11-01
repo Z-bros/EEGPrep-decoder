@@ -23,6 +23,8 @@ analysis itself.
   Hjorth parameters, time-frequency representations.
 - Dataset preparation, metadata preservation, and export of prepared arrays
   or MNE objects.
+- Scientific validation, documentation, and benchmarking of the library
+  itself.
 
 ### Out of scope
 
@@ -33,8 +35,7 @@ The library does **not** implement, now or in later phases:
 - model evaluation frameworks (cross-validation, metrics, benchmarks of
   model accuracy);
 - **supervised learned transformations** such as CSP, xDAWN, or any spatial
-  filter or scaler fitted using labels;
-- data augmentation (removed from the roadmap after Phase 5).
+  filter or scaler fitted using labels.
 
 Supervised transforms stay downstream, inside the user's own modelling code
 (e.g. a scikit-learn `Pipeline` with `mne.decoding.CSP`), where they can be
@@ -44,8 +45,9 @@ feeds into such code, but that code is not part of the library.
 ## Design rules that apply to every phase
 
 1. **The preprocessing pipeline never requires feature extraction.**
-   Features live in a separate, optional subpackage and are not steps of
-   `EEGPipeline`. Preparing EEG data never depends on them.
+   Features live in a separate, optional subpackage, are not steps of
+   `EEGPipeline`, and are never imported by the preprocessing, epoching,
+   artifact, or quality modules. Preparing EEG data never depends on them.
 2. **No step uses labels.** Anything in the library that is estimated from
    data (ICA unmixing, robust bad-channel statistics, quality metrics) is
    unsupervised and computed per recording. Component or channel selection
@@ -66,13 +68,13 @@ feeds into such code, but that code is not part of the library.
 | 1 | Package foundation | Done |
 | 2 | Core preprocessing and `EEGPipeline` | Done (2a-2d) |
 | 3 | Artifact detection and correction | Done (3a-3c) |
-| 4 | Signal-quality assessment and visualization | Done |
+| 4 | Signal-quality assessment and visualization | Done (4a-4b) |
 | 5 | Optional fixed feature extraction | Done |
-| 6 | Dataset preparation, metadata, and export | Next |
-| 7 | Documentation, benchmarking, and release | Planned |
+| 6 | Dataset preparation, metadata preservation, and export | Next |
+| 7 | Scientific validation, documentation, benchmarking, and release | Planned |
 
-Function names below are proposals; each phase starts with a design review
-before any code is written, and is split into small sub-milestones.
+Each phase starts with a design review before code is written and is split
+into small sub-milestones. Function names in planned phases are proposals.
 
 ## Completed
 
@@ -90,132 +92,105 @@ workflow, seeded synthetic EEG fixtures.
 | 2c | `epoching.make_epochs`, `epoching.baseline_correct`, `artifacts.reject_epochs` |
 | 2d | `preprocessing.PreprocessingConfig`, `preprocessing.EEGPipeline` |
 
-These APIs and their tests are kept unchanged by the roadmap revision.
-
-## Planned
-
 ### Phase 3: artifact detection and correction
 
-Goal: find and handle bad channels and artifacts before epoching, so that
+Find and handle bad channels and artifacts before epoching, so that
 re-referencing and epoch rejection work on trustworthy data.
 
-| Sub-phase | Public API | Status |
-|---|---|---|
-| 3a | `artifacts.assess_channels`, `ChannelAssessment`, `mark_bad_channels`, `interpolate_bad_channels` (+ pipeline op) | Done |
-| 3b | `artifacts.annotate_artifacts`, `add_annotations` | Done |
-| 3c | `artifacts.fit_ica`, `find_artifact_components`, `ComponentReport`, `apply_ica`; `[ica]` extra for picard/fastica | Done |
+| Sub-phase | Public API |
+|---|---|
+| 3a | `artifacts.assess_channels`, `ChannelAssessment`, `mark_bad_channels`, `interpolate_bad_channels` (also the pipeline op `interpolate_bad_channels`) |
+| 3b | `artifacts.annotate_artifacts`, `add_annotations` |
+| 3c | `artifacts.fit_ica`, `find_artifact_components`, `ComponentReport`, `apply_ica`; `[ica]` extra for picard/fastica |
 
-- **Bad-channel assessment** (per recording, no labels): flat or
-  near-constant channels, extreme variance or amplitude (robust z-scores),
-  low correlation with neighbouring channels, excessive line noise or
-  high-frequency power. Returns a report of *why* each channel was flagged;
-  marking channels bad is an explicit, separate step.
-- **Interpolation** of bad channels via MNE (requires electrode positions,
-  so a montage helper is part of this phase).
-- **Annotation helpers**: mark segments (e.g. amplitude bursts, flat
-  stretches) as `BAD_*` annotations, which `make_epochs` already honours.
-- **Optional ICA** via `mne.preprocessing.ICA`: seeded fitting (with a
-  recommended 1 Hz high-passed copy for fitting), EOG/ECG component
-  detection with MNE's correlation methods, explicit component exclusion,
-  and applying the solution to the original data. Fit and apply are separate
-  so a solution can be reused or audited.
-- Pipeline integration: label-free steps (e.g. interpolation) may become
-  `EEGPipeline` ops; detection reports stay outside the pipeline so a human
-  can review them.
-
-Considerations: robust statistics on short recordings, the order of
-operations (bad channels before average reference), and seeding. MNE's
-default `fastica` method needs scikit-learn and `picard` needs
-`python-picard`; only `infomax` works with MNE alone, so ICA ships as an
-optional extra (e.g. `pip install eeg-decoder[ica]`).
+- Bad-channel assessment (per recording, no labels) reports *why* each
+  channel was flagged; marking channels bad is an explicit, separate step,
+  and assessment is deliberately not a pipeline op so a person reviews it.
+- Interpolation refuses missing positions and too many bad channels, and
+  keeps the bad marks of non-EEG channels.
+- Artifact annotations use a sliding-window peak-to-peak amplitude.
+- ICA is seeded and label-free; fit, component proposal, and removal are
+  separate steps, and only the components passed are removed. `infomax`
+  works with MNE alone.
 
 ### Phase 4: signal-quality assessment and visualization
 
-Goal: make data quality visible and quantitative, before and after
-preprocessing.
+| Sub-phase | Public API |
+|---|---|
+| 4a | `quality.recording_quality` / `RecordingQuality`, `quality.epochs_quality` / `EpochsQuality` |
+| 4b | `quality.plot_psd_comparison`, `plot_channel_quality`, `plot_rejection_summary` |
 
-- Per-channel and per-recording quality metrics: fraction of bad channels,
-  fraction of data marked bad, line-noise ratio, amplitude and variance
-  distributions, epochs rejected and why (from `drop_log` and the pipeline
-  record).
-- A machine-readable quality report (JSON-serializable, like the pipeline
-  record).
-- Plots built on MNE/matplotlib: PSD before vs after preprocessing,
-  channel-quality topography, rejection summary. Plotting functions return
-  figures and never block or save implicitly.
-
-Considerations: metrics are descriptive, not pass/fail verdicts; thresholds
-are user-supplied. Plot tests use a non-interactive backend.
-
-| Sub-phase | Public API | Status |
-|---|---|---|
-| 4a | `quality.recording_quality` / `RecordingQuality`, `quality.epochs_quality` / `EpochsQuality` | Done |
-| 4b | `quality.plot_psd_comparison`, `plot_channel_quality`, `plot_rejection_summary` | Done |
-
-Deferred: a channel-quality *topography* (needs electrode positions); the
-per-channel bar chart covers the same information without a montage.
-Summaries of the `EEGPipeline` record are not separate functions: the record
-is already JSON, and `epochs_quality` covers the rejection part.
+Metrics are descriptive, never pass/fail verdicts, and JSON-serializable.
+Plots return matplotlib figures and never show, block, or save. Not done: a
+channel-quality *topography* (needs electrode positions); the per-channel bar
+chart covers the same information without a montage.
 
 ### Phase 5: optional fixed feature extraction
 
-Goal: provide common, non-learned EEG descriptors for users who want them.
-Entirely optional: separate `features` subpackage, not an `EEGPipeline` op.
+| Public API (`eeg_decoder.features`) |
+|---|
+| `FeatureArray` (named axes, units, aligned `events`; `flatten()`) |
+| `welch_psd`, `band_power`, `CLASSIC_BANDS` |
+| `time_stats`, `hjorth` |
+| `morlet_tfr` |
 
-- Welch PSD with explicit window length (frequency resolution) and window
-  type; parity with SciPy and MNE.
-- Absolute and relative band power with **user-supplied** bands (a
-  documented example band set is offered, never applied implicitly);
-  half-open `[low, high)` bands; validation against Nyquist and resolution.
-- Hjorth activity, mobility, and complexity (with guidance to low-pass
-  first, since mobility and complexity are very noise-sensitive).
-- Time-frequency representations (e.g. Morlet wavelets via MNE) with
-  explicit frequencies and cycles.
-- Outputs: arrays with explicit axes plus interpretable feature names
-  (e.g. `"C3:alpha"`), aligned row-for-row with `epochs.events`.
+Entirely optional: a separate subpackage, not an `EEGPipeline` op, and never
+imported by the preprocessing modules. Every feature is computed from a
+single epoch's own samples, so it is leakage-free. Window lengths and bands
+are always explicit. Input is `mne.Epochs` (arrays via `mne.EpochsArray`).
 
-Every feature is computed from a single epoch's own samples, so it is
-leakage-free. Supervised transforms such as CSP are explicitly excluded (see
-Out of scope).
+## Planned
 
-| Public API (`eeg_decoder.features`) | Status |
-|---|---|
-| `FeatureArray` (named axes, units, aligned `events`; `flatten()`) | Done |
-| `welch_psd`, `band_power`, `CLASSIC_BANDS` | Done |
-| `time_stats`, `hjorth` | Done |
-| `morlet_tfr` | Done |
+### Phase 6: dataset preparation, metadata preservation, and export
 
-Decisions: input is `mne.Epochs` only (arrays via `mne.EpochsArray`); no
-array adapter was added. Features are not `EEGPipeline` ops, and importing
-the preprocessing, epoching, artifact, or quality modules never imports them.
+Goal: turn many recordings into one consistent, documented dataset that any
+downstream tool can load, without any modelling in this library.
 
-### Phase 6: dataset preparation, metadata, and export
+- **6a: consistency across recordings.** Compare channel set and order,
+  sampling rate, `event_id`, epoch window and length, filter edges,
+  reference, and units, and report *all* differences in one explicit error
+  (MNE's `concatenate_epochs` stops at the first). A helper picks and
+  reorders channels to an explicit list; nothing is silently interpolated,
+  resampled, re-referenced, or dropped.
+- **6b: running many recordings.** Apply a `PreprocessingConfig` to each
+  `(raw, metadata)` pair (e.g. subject, session, run, dataset), keep every
+  pipeline record, and combine the results into one dataset with `X`
+  `(n_epochs, n_channels, n_times)` in volts, `y` and `event_id`, one
+  identifier per epoch for each metadata key (so downstream grouped splits by
+  subject or session are possible), channel names, sampling rate, times, and
+  the records. Stopping at the first failing recording is the proposed
+  default, with an option to collect failures instead.
+- **6c: export.** NumPy archives (`.npz`) that round-trip everything and load
+  with `allow_pickle=False`, and MNE `.fif` files per recording with a JSON
+  sidecar (record and metadata). Further formats (e.g. BIDS derivatives via
+  `mne-bids`) only behind optional extras.
 
-Goal: turn many recordings into a consistent, documented dataset.
+Metadata preservation and privacy: only metadata the user passes is stored;
+the measurement date and subject information inside `raw.info` are never
+copied. Identifiers are kept aligned with the epochs after rejection.
 
-- Running a `PreprocessingConfig` over multiple recordings with per-recording
-  metadata (subject, session, run, dataset), and collecting the records.
-- Harmonization checks across recordings: same channels and order, same
-  sampling rate, same `event_id`, same units; explicit errors when they
-  differ, plus helpers to pick or reorder channels.
-- Metadata preservation: subject/session/run identifiers carried into
-  `epochs.metadata` so downstream grouped splits (by subject or session) are
-  possible; privacy guidance on identifying fields.
-- Export: MNE `.fif` files, and NumPy archives (`.npz`) with `X`
-  `(n_epochs, n_channels, n_times)`, `y`, `groups`, channel names, sampling
-  rate, and the processing record. Optional formats (e.g. BIDS derivatives
-  via `mne-bids`, HDF5) behind optional extras.
+Open design decision: store identifiers in the library's own arrays (core
+stays pandas-free, with an optional `to_dataframe()` when pandas is
+installed), or require pandas and use MNE's `epochs.metadata`, which needs
+it (verified on MNE 1.13).
 
-### Phase 7: documentation, benchmarking, and release
+### Phase 7: scientific validation, documentation, benchmarking, and release
 
-- User guide and API reference (e.g. Sphinx or MkDocs), with the scientific
-  assumptions of every operation, and example notebooks on public datasets
-  (licensing checked).
-- Benchmarks of the **library itself**: runtime and memory of preprocessing
-  steps and pipelines, and numerical agreement with reference
+- **Scientific validation.** Check every operation against trusted reference
+  implementations (MNE-Python, SciPy) and analytic expectations, building on
+  the existing tests; run the full workflow on public EEG datasets (licensing
+  checked) and document the outcomes, e.g. that filters, referencing,
+  bad-channel assessment, and ICA behave as described; record every MNE
+  behaviour the library works around, with a test pinning it, so a change in
+  MNE is caught.
+- **Documentation.** User guide and API reference (e.g. Sphinx or MkDocs)
+  stating the scientific assumptions of every operation, plus example
+  notebooks; reusable code stays in the package.
+- **Benchmarking of the library itself.** Runtime and memory of
+  preprocessing steps and pipelines, and numerical agreement with reference
   implementations. No model-accuracy benchmarks.
-- Release preparation: versioning policy, changelog, CI across supported
-  Python and MNE versions, packaging checks, and a first PyPI release.
+- **Release.** Versioning policy, changelog, CI across supported Python and
+  MNE versions, packaging checks, and a first PyPI release.
 
 ## Changes from the original roadmap
 
@@ -224,7 +199,3 @@ The original plan included classical decoding (Phase 4), deep learning
 feature. These are removed from the library's scope. The import name
 `eeg_decoder` and the distribution name `eeg-decoder` are unchanged to keep
 the existing public API stable.
-
-After Phase 5, EEG data augmentation was removed from the roadmap entirely
-(it had been planned as Phase 6). Dataset preparation and export became
-Phase 6, and documentation and release Phase 7.
