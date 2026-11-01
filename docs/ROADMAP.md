@@ -71,8 +71,8 @@ feeds into such code, but that code is not part of the library.
 | 2 | Core preprocessing and `EEGPipeline` | Done (2a-2d) |
 | 3 | Artifact detection and correction | Done (3a-3c) |
 | 4 | Signal-quality assessment and visualization | Done |
-| 5 | Optional fixed feature extraction | Next |
-| 6 | EEG data augmentation | Planned |
+| 5 | Optional fixed feature extraction | Done |
+| 6 | EEG data augmentation | Next |
 | 7 | Dataset preparation, metadata, and export | Planned |
 | 8 | Documentation, benchmarking, and release | Planned |
 
@@ -182,6 +182,17 @@ Entirely optional: separate `features` subpackage, not an `EEGPipeline` op.
 Every feature is computed from a single epoch's own samples, so it is
 leakage-free. Supervised transforms such as CSP are explicitly excluded (see
 Out of scope).
+
+| Public API (`eeg_decoder.features`) | Status |
+|---|---|
+| `FeatureArray` (named axes, units, aligned `events`; `flatten()`) | Done |
+| `welch_psd`, `band_power`, `CLASSIC_BANDS` | Done |
+| `time_stats`, `hjorth` | Done |
+| `morlet_tfr` | Done |
+
+Decisions: input is `mne.Epochs` only (arrays via `mne.EpochsArray`); no
+array adapter was added. Features are not `EEGPipeline` ops, and importing
+the preprocessing, epoching, artifact, or quality modules never imports them.
 
 ### Phase 6: EEG data augmentation
 

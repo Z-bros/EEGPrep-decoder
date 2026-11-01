@@ -2,7 +2,8 @@
 
 The top-level namespace exposes the package version and the core
 configuration object; functionality lives in the subpackages ``io``,
-``preprocessing``, ``epoching``, ``artifacts``, and ``quality``.
+``preprocessing``, ``epoching``, ``artifacts``, ``quality``, and the
+optional ``features``.
 """
 
 from eeg_decoder.config import EEGConfig
