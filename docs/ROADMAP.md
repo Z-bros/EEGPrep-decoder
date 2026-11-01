@@ -70,7 +70,7 @@ feeds into such code, but that code is not part of the library.
 | 3 | Artifact detection and correction | Done (3a-3c) |
 | 4 | Signal-quality assessment and visualization | Done (4a-4b) |
 | 5 | Optional fixed feature extraction | Done |
-| 6 | Dataset preparation, metadata preservation, and export | Next |
+| 6 | Dataset preparation, metadata preservation, and export | In progress (6a, 6b, `.npz` done) |
 | 7 | Scientific validation, documentation, benchmarking, and release | Planned |
 
 Each phase starts with a design review before code is written and is split
@@ -169,10 +169,23 @@ Metadata preservation and privacy: only metadata the user passes is stored;
 the measurement date and subject information inside `raw.info` are never
 copied. Identifiers are kept aligned with the epochs after rejection.
 
-Open design decision: store identifiers in the library's own arrays (core
-stays pandas-free, with an optional `to_dataframe()` when pandas is
-installed), or require pandas and use MNE's `epochs.metadata`, which needs
-it (verified on MNE 1.13).
+| Sub-phase | Public API (`eeg_decoder.dataset`) | Status |
+|---|---|---|
+| 6a | `check_compatible`, `match_channels` | Done |
+| 6b | `prepare_recordings`, `combine_epochs`, `EpochDataset` | Done |
+| 6c | `save_npz`, `load_npz` | Done |
+| 6c | `.fif` export per recording with JSON sidecar | Next |
+
+Decisions:
+
+- Identifiers live in the library's own per-epoch arrays (`groups`), so the
+  core stays pandas-free; `EpochDataset.to_dataframe()` works when pandas is
+  installed. MNE's `epochs.metadata` would have required pandas (verified on
+  MNE 1.13).
+- The first failing recording stops the run by default;
+  `on_error="collect"` skips and lists failures instead.
+- Every channel is kept unless `ch_types` (e.g. `["eeg"]`) is passed.
+- Bad channels are not allowed when combining: interpolate or drop first.
 
 ### Phase 7: scientific validation, documentation, benchmarking, and release
 

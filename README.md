@@ -9,7 +9,7 @@ It turns raw recordings into clean, documented, analysis-ready data for any
 downstream use (ERP analysis, statistics, machine learning, deep learning),
 and stops there.
 
-> **Status: pre-alpha (Phases 1-5 complete).** Available: `to_raw`,
+> **Status: pre-alpha (Phases 1-5 complete, Phase 6 in progress).** Available: `to_raw`,
 > `bandpass`, `notch`, `rereference`, `resample`, `make_epochs`,
 > `baseline_correct`, `reject_epochs`, the `EEGPipeline` /
 > `PreprocessingConfig` that chains them, artifact handling
@@ -18,9 +18,10 @@ and stops there.
 > `find_artifact_components`, `apply_ica`), signal-quality reports and
 > plots (`recording_quality`, `epochs_quality`, `plot_psd_comparison`,
 > `plot_channel_quality`, `plot_rejection_summary`), and optional features
-> (`welch_psd`, `band_power`, `time_stats`, `hjorth`, `morlet_tfr`). Next:
-> dataset preparation, metadata preservation, and export. See the
-> [roadmap](docs/ROADMAP.md).
+> (`welch_psd`, `band_power`, `time_stats`, `hjorth`, `morlet_tfr`), and
+> dataset preparation (`check_compatible`, `match_channels`,
+> `prepare_recordings`, `combine_epochs`, `EpochDataset`, `save_npz`,
+> `load_npz`). Next: `.fif` export. See the [roadmap](docs/ROADMAP.md).
 
 ## Scope
 
@@ -355,6 +356,54 @@ fig.savefig("psd.png")                               # figures are returned, nev
   colour-vision-deficiency-checked palette, and bad channels are also
   hatched, so meaning never depends on colour alone.
 
+## Dataset preparation and export
+
+Turn many recordings into one consistent dataset that any downstream tool
+can load. Nothing here uses labels or is fitted to data.
+
+```python
+from eeg_decoder.dataset import prepare_recordings, save_npz, load_npz
+
+recordings = [
+    (raw_s01_t, {"subject": "01", "session": "T"}),
+    (raw_s01_e, {"subject": "01", "session": "E"}),
+    (raw_s02_t, {"subject": "02", "session": "T"}),
+]
+ds = prepare_recordings(recordings, config, ch_types=["eeg"])  # same config for each
+print(ds.summary())
+
+ds.X           # (n_epochs, n_channels, n_times), volts, read-only
+ds.y           # event codes; ds.y_names gives condition names
+ds.groups["subject"]   # one identifier per epoch, aligned after rejection
+ds.records     # each recording's pipeline record
+
+save_npz(ds, "dataset.npz")   # loads back exactly, with allow_pickle=False
+ds = load_npz("dataset.npz")
+```
+
+- **Strict consistency.** Before combining, `check_compatible` compares
+  every recording with the first: channel names and order, channel types and
+  units, sampling rate, epoch start and length, filter edges, reference,
+  baseline, bad channels (none allowed; interpolate or drop first), and the
+  meaning of every event code. It reports **all** differences in one error;
+  MNE's `concatenate_epochs` stops at the first. Nothing is resampled,
+  re-referenced, interpolated, or reordered for you; `match_channels(inst,
+  ch_names)` picks and reorders explicitly.
+- **Failures.** By default the first failing recording stops the run, with
+  a note naming it. With `on_error="collect"`, failing recordings (including
+  ones with no epochs left) are skipped and listed in `ds.failures`;
+  `ds.recording` keeps referring to positions in your input list.
+- **Metadata and privacy.** Metadata values must be strings, numbers, or
+  booleans, with the same keys for every recording; each key becomes a
+  per-epoch array in `ds.groups` for downstream grouped splits. Only what you
+  pass is stored: the measurement date and subject info in `raw.info` are
+  never copied. pandas is not required; `ds.to_dataframe()` works if it is
+  installed.
+- **Channels.** `ch_types=["eeg"]` keeps only EEG channels in `X`; by default
+  every channel (including stim) is kept, so nothing is dropped unless you ask.
+- **Export.** `save_npz` writes plain arrays and JSON text only (no pickled
+  objects) and refuses to overwrite unless `overwrite=True`.
+
 ## Optional feature extraction
 
 Fixed, non-learned descriptors for users who want them. **Not needed to
@@ -440,7 +489,7 @@ Full details, design rules, and per-phase considerations:
 | 3 | Artifact detection and correction (bad channels, optional ICA) | Done |
 | 4 | Signal-quality assessment and visualization | Done |
 | 5 | Optional fixed feature extraction (PSD, band power, Hjorth, time-frequency) | Done |
-| 6 | Dataset preparation, metadata preservation, and export | Next |
+| 6 | Dataset preparation, metadata preservation, and export | In progress (6a, 6b, `.npz` export done; `.fif` export next) |
 | 7 | Scientific validation, documentation, benchmarking, and release | Planned |
 
 ## Known limitations
