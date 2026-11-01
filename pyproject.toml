@@ -25,7 +25,9 @@ classifiers = [
 # brings SciPy with it. The floor is the version whose API was verified.
 # Further requirements (e.g. ICA backends, export formats) are added as optional
 # dependency groups in the phase that needs them; the core stays model-free.
-dependencies = ["numpy>=2.1", "mne>=1.13"]
+# matplotlib is already required by MNE; it is listed because the quality plots
+# import it directly (same floor as MNE 1.13).
+dependencies = ["numpy>=2.1", "mne>=1.13", "matplotlib>=3.9"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

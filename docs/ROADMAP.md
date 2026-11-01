@@ -70,8 +70,8 @@ feeds into such code, but that code is not part of the library.
 | 1 | Package foundation | Done |
 | 2 | Core preprocessing and `EEGPipeline` | Done (2a-2d) |
 | 3 | Artifact detection and correction | Done (3a-3c) |
-| 4 | Signal-quality assessment and visualization | Next |
-| 5 | Optional fixed feature extraction | Planned |
+| 4 | Signal-quality assessment and visualization | Done |
+| 5 | Optional fixed feature extraction | Next |
 | 6 | EEG data augmentation | Planned |
 | 7 | Dataset preparation, metadata, and export | Planned |
 | 8 | Documentation, benchmarking, and release | Planned |
@@ -151,6 +151,16 @@ preprocessing.
 
 Considerations: metrics are descriptive, not pass/fail verdicts; thresholds
 are user-supplied. Plot tests use a non-interactive backend.
+
+| Sub-phase | Public API | Status |
+|---|---|---|
+| 4a | `quality.recording_quality` / `RecordingQuality`, `quality.epochs_quality` / `EpochsQuality` | Done |
+| 4b | `quality.plot_psd_comparison`, `plot_channel_quality`, `plot_rejection_summary` | Done |
+
+Deferred: a channel-quality *topography* (needs electrode positions); the
+per-channel bar chart covers the same information without a montage.
+Summaries of the `EEGPipeline` record are not separate functions: the record
+is already JSON, and `epochs_quality` covers the rejection part.
 
 ### Phase 5: optional fixed feature extraction
 
