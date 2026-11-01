@@ -19,18 +19,20 @@ and stops there.
 > plots (`recording_quality`, `epochs_quality`, `plot_psd_comparison`,
 > `plot_channel_quality`, `plot_rejection_summary`), and optional features
 > (`welch_psd`, `band_power`, `time_stats`, `hjorth`, `morlet_tfr`). Next:
-> EEG data augmentation. See the [roadmap](docs/ROADMAP.md).
+> dataset preparation, metadata, and export. See the
+> [roadmap](docs/ROADMAP.md).
 
 ## Scope
 
 **In scope:** preprocessing, artifact detection and correction (including
 bad-channel assessment and optional ICA), signal-quality assessment and
 visualization, *optional* fixed feature extraction (PSD, band power, Hjorth,
-time-frequency), reproducible EEG augmentation, dataset preparation with
-metadata, and export of prepared arrays or MNE objects.
+time-frequency), dataset preparation with metadata, and export of prepared
+arrays or MNE objects.
 
 **Out of scope:** classification models, model training, fine-tuning,
-knowledge distillation, and model evaluation frameworks. **Supervised
+knowledge distillation, model evaluation frameworks, and data augmentation.
+**Supervised
 learned transformations such as CSP are not part of the library**; they
 belong in your downstream modelling code (e.g. a scikit-learn `Pipeline`
 with `mne.decoding.CSP`), fitted on training data only.
@@ -144,8 +146,8 @@ epochs, record = EEGPipeline(config).run(raw, metadata={"subject": "01", "sessio
   left out, since they may be identifying.
 - **No leakage.** No step learns anything from the data, so the pipeline can
   run on the whole dataset before a train/test split. Supervised transforms
-  (e.g. CSP) and augmentation are deliberately not pipeline steps: apply them
-  downstream, to training data only.
+  (e.g. CSP) are deliberately not pipeline steps: apply them downstream,
+  fitted on training data only.
 - Configs are immutable; `PreprocessingConfig.load(path)` and
   `config.to_dict()` give editable copies to derive variants from.
 
@@ -437,9 +439,8 @@ Full details, design rules, and per-phase considerations:
 | 3 | Artifact detection and correction (bad channels, optional ICA) | Done |
 | 4 | Signal-quality assessment and visualization | Done |
 | 5 | Optional fixed feature extraction (PSD, band power, Hjorth, time-frequency) | Done |
-| 6 | EEG data augmentation (seeded, event/label preserving) | Next |
-| 7 | Dataset preparation, metadata, and export | Planned |
-| 8 | Documentation, benchmarking, and release | Planned |
+| 6 | Dataset preparation, metadata, and export | Next |
+| 7 | Documentation, benchmarking, and release | Planned |
 
 ## Known limitations
 

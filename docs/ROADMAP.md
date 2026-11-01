@@ -21,8 +21,6 @@ analysis itself.
 - Signal-quality assessment and visualization.
 - **Optional**, fixed (non-learned) feature extraction: PSD, band power,
   Hjorth parameters, time-frequency representations.
-- EEG-specific data augmentation that is reproducible and preserves events
-  and labels.
 - Dataset preparation, metadata preservation, and export of prepared arrays
   or MNE objects.
 
@@ -35,7 +33,8 @@ The library does **not** implement, now or in later phases:
 - model evaluation frameworks (cross-validation, metrics, benchmarks of
   model accuracy);
 - **supervised learned transformations** such as CSP, xDAWN, or any spatial
-  filter or scaler fitted using labels.
+  filter or scaler fitted using labels;
+- data augmentation (removed from the roadmap after Phase 5).
 
 Supervised transforms stay downstream, inside the user's own modelling code
 (e.g. a scikit-learn `Pipeline` with `mne.decoding.CSP`), where they can be
@@ -54,13 +53,10 @@ feeds into such code, but that code is not part of the library.
 3. **Leakage is documented, not hidden.** Where an operation is fitted to
    data, its docs state what it was fitted on, and offer a way to fit on one
    set of data and apply to another.
-4. **Augmentation is never part of the preprocessing pipeline.** It
-   duplicates and alters trials, so it belongs after the train/test split,
-   applied to training data only by the user's downstream code.
-5. **Reproducibility.** Every stochastic operation (ICA, augmentation) takes
-   an explicit seed, and records keep parameters, versions, and seeds.
-6. **MNE-first, copy-not-mutate, explicit units (volts)**, as in Phases 1-2.
-7. **Optional dependency groups** keep the core install small; each phase
+4. **Reproducibility.** Every stochastic operation (e.g. ICA) takes an
+   explicit seed, and records keep parameters, versions, and seeds.
+5. **MNE-first, copy-not-mutate, explicit units (volts)**, as in Phases 1-2.
+6. **Optional dependency groups** keep the core install small; each phase
    adds an extra only for what it needs.
 
 ## Status
@@ -72,9 +68,8 @@ feeds into such code, but that code is not part of the library.
 | 3 | Artifact detection and correction | Done (3a-3c) |
 | 4 | Signal-quality assessment and visualization | Done |
 | 5 | Optional fixed feature extraction | Done |
-| 6 | EEG data augmentation | Next |
-| 7 | Dataset preparation, metadata, and export | Planned |
-| 8 | Documentation, benchmarking, and release | Planned |
+| 6 | Dataset preparation, metadata, and export | Next |
+| 7 | Documentation, benchmarking, and release | Planned |
 
 Function names below are proposals; each phase starts with a design review
 before any code is written, and is split into small sub-milestones.
@@ -194,25 +189,7 @@ Decisions: input is `mne.Epochs` only (arrays via `mne.EpochsArray`); no
 array adapter was added. Features are not `EEGPipeline` ops, and importing
 the preprocessing, epoching, artifact, or quality modules never imports them.
 
-### Phase 6: EEG data augmentation
-
-Goal: reproducible, physically reasonable augmentation for users training
-models elsewhere.
-
-- Candidates: additive noise at a specified SNR or amplitude in volts,
-  amplitude scaling, time shifting within the epoch window, channel dropout,
-  small sign or polarity changes where meaningful; each justified in the
-  docs.
-- Every function takes an explicit seed (or `numpy.random.Generator`) and
-  returns new data with **events, labels, `event_id`, and metadata
-  preserved**, plus a record of what was applied.
-- Works on `mne.Epochs` and on `(n_epochs, n_channels, n_times)` arrays
-  with explicit `sfreq`.
-
-Considerations: augmentation is applied by the user to training data after
-the split; it is never an `EEGPipeline` step.
-
-### Phase 7: dataset preparation, metadata, and export
+### Phase 6: dataset preparation, metadata, and export
 
 Goal: turn many recordings into a consistent, documented dataset.
 
@@ -229,7 +206,7 @@ Goal: turn many recordings into a consistent, documented dataset.
   rate, and the processing record. Optional formats (e.g. BIDS derivatives
   via `mne-bids`, HDF5) behind optional extras.
 
-### Phase 8: documentation, benchmarking, and release
+### Phase 7: documentation, benchmarking, and release
 
 - User guide and API reference (e.g. Sphinx or MkDocs), with the scientific
   assumptions of every operation, and example notebooks on public datasets
@@ -247,3 +224,7 @@ The original plan included classical decoding (Phase 4), deep learning
 feature. These are removed from the library's scope. The import name
 `eeg_decoder` and the distribution name `eeg-decoder` are unchanged to keep
 the existing public API stable.
+
+After Phase 5, EEG data augmentation was removed from the roadmap entirely
+(it had been planned as Phase 6). Dataset preparation and export became
+Phase 6, and documentation and release Phase 7.
