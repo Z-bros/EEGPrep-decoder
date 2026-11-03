@@ -70,8 +70,8 @@ feeds into such code, but that code is not part of the library.
 | 3 | Artifact detection and correction | Done (3a-3c) |
 | 4 | Signal-quality assessment and visualization | Done (4a-4b) |
 | 5 | Optional fixed feature extraction | Done |
-| 6 | Dataset preparation, metadata preservation, and export | In progress (6a, 6b, `.npz` done) |
-| 7 | Scientific validation, documentation, benchmarking, and release | Planned |
+| 6 | Dataset preparation, metadata preservation, and export | Done (6a-6c) |
+| 7 | Scientific validation, documentation, benchmarking, and release | Next |
 
 Each phase starts with a design review before code is written and is split
 into small sub-milestones. Function names in planned phases are proposals.
@@ -139,8 +139,6 @@ imported by the preprocessing modules. Every feature is computed from a
 single epoch's own samples, so it is leakage-free. Window lengths and bands
 are always explicit. Input is `mne.Epochs` (arrays via `mne.EpochsArray`).
 
-## Planned
-
 ### Phase 6: dataset preparation, metadata preservation, and export
 
 Goal: turn many recordings into one consistent, documented dataset that any
@@ -174,7 +172,7 @@ copied. Identifiers are kept aligned with the epochs after rejection.
 | 6a | `check_compatible`, `match_channels` | Done |
 | 6b | `prepare_recordings`, `combine_epochs`, `EpochDataset` | Done |
 | 6c | `save_npz`, `load_npz` | Done |
-| 6c | `.fif` export per recording with JSON sidecar | Next |
+| 6c | `save_epochs_fif`, `load_epochs_fif`; `prepare_recordings(..., fif_dir=...)` | Done |
 
 Decisions:
 
@@ -186,6 +184,15 @@ Decisions:
   `on_error="collect"` skips and lists failures instead.
 - Every channel is kept unless `ch_types` (e.g. `["eeg"]`) is passed.
 - Bad channels are not allowed when combining: interpolate or drop first.
+- `.fif` files are written in double precision (MNE's default single
+  precision does not round-trip exactly) and anonymized by default (a plain
+  MNE save keeps the measurement date and subject information); both
+  verified on MNE 1.13.
+- `.fif` stores sampling rate, filter edges, epoch start, and baseline as
+  float32, so `check_compatible` compares them with a tolerance (1e-6
+  relative; half a sample for times) instead of exactly.
+
+## Planned
 
 ### Phase 7: scientific validation, documentation, benchmarking, and release
 

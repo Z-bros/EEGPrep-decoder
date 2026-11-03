@@ -73,6 +73,17 @@ def check_compatible(
             problems.append(f"{_describe(i, labels)}: {what} is {value!r}, expected {expected!r} "
                             f"(as in {_describe(0, labels)}).")
 
+    # MNE's .fif format stores sampling rate, filter edges, tmin, and baseline as
+    # float32 (verified on MNE 1.13: a -0.2 s baseline reloads as -0.20000000298),
+    # so floats are compared with a tolerance: 1e-6 relative for rates and
+    # filter edges, half a sample for times.
+    def check_close(i: int, what: str, value: float, expected: float, atol: float = 0.0) -> None:
+        if not np.isclose(value, expected, rtol=1e-6, atol=atol):
+            problems.append(f"{_describe(i, labels)}: {what} is {value!r}, expected {expected!r} "
+                            f"(as in {_describe(0, labels)}).")
+
+    half_sample = 0.5 / float(ref.info["sfreq"])
+
     for i, ep in enumerate(epochs_list):
         name = _describe(i, labels)
         if len(ep) == 0:
@@ -95,14 +106,18 @@ def check_compatible(
             units = [(int(c["unit"]), int(c["unit_mul"])) for c in ep.info["chs"]]
             ref_units = [(int(c["unit"]), int(c["unit_mul"])) for c in ref.info["chs"]]
             check(i, "channel units", units, ref_units)
-        check(i, "sampling rate (Hz)", float(ep.info["sfreq"]), float(ref.info["sfreq"]))
-        check(i, "epoch start tmin (s)", round(float(ep.tmin), 9), round(float(ref.tmin), 9))
+        check_close(i, "sampling rate (Hz)", float(ep.info["sfreq"]), float(ref.info["sfreq"]))
+        check_close(i, "epoch start tmin (s)", float(ep.tmin), float(ref.tmin), half_sample)
         check(i, "samples per epoch", len(ep.times), len(ref.times))
-        check(i, "highpass (Hz)", float(ep.info["highpass"]), float(ref.info["highpass"]))
-        check(i, "lowpass (Hz)", float(ep.info["lowpass"]), float(ref.info["lowpass"]))
+        check_close(i, "highpass (Hz)", float(ep.info["highpass"]), float(ref.info["highpass"]))
+        check_close(i, "lowpass (Hz)", float(ep.info["lowpass"]), float(ref.info["lowpass"]))
         check(i, "custom reference applied", bool(ep.info["custom_ref_applied"]),
               bool(ref.info["custom_ref_applied"]))
-        check(i, "baseline", ep.baseline, ref.baseline)
+        if (ep.baseline is None) != (ref.baseline is None) or (
+            ep.baseline is not None
+            and not np.allclose(ep.baseline, ref.baseline, rtol=0, atol=half_sample)
+        ):
+            check(i, "baseline", ep.baseline, ref.baseline)
 
     union: dict[str, int] = {}
     code_owner: dict[int, str] = {}

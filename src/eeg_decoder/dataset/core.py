@@ -18,6 +18,7 @@ import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
@@ -246,6 +247,7 @@ def prepare_recordings(
     *,
     on_error: str = "raise",
     ch_types: Sequence[str] | None = None,
+    fif_dir: str | Path | None = None,
 ) -> EpochDataset:
     """Run one preprocessing config on several recordings and combine the epochs.
 
@@ -264,6 +266,14 @@ def prepare_recordings(
         recordings always raise.
     ch_types : sequence of str or None
         Passed to :func:`combine_epochs`, e.g. ``["eeg"]``; ``None`` keeps all.
+    fif_dir : str, pathlib.Path, or None
+        If given (an existing directory), also write each successful
+        recording's full epochs (all channels) as
+        ``recording-<index>-epo.fif`` with a JSON sidecar, via
+        :func:`save_epochs_fif` (anonymized, never overwriting). ``<index>`` is
+        the position in ``recordings``, zero-padded to three digits. Files are
+        written only after all recordings were combined successfully, and the
+        run refuses to start if any target file already exists.
 
     Returns
     -------
@@ -277,6 +287,8 @@ def prepare_recordings(
         On malformed inputs, a config without ``make_epochs``, incompatible
         results, or (with ``"collect"``) when every recording fails. With
         ``"raise"``, the first recording's error propagates.
+    FileExistsError, FileNotFoundError
+        If ``fif_dir`` already holds a target file, or does not exist.
     """
     if not isinstance(config, PreprocessingConfig):
         raise TypeError(f"config must be a PreprocessingConfig, got {type(config).__name__}.")
@@ -290,6 +302,19 @@ def prepare_recordings(
         if not (isinstance(item, tuple) and len(item) == 2):
             raise TypeError(f"recordings[{i}] must be a (raw, metadata) pair.")
     metadata = _check_metadata([meta for _, meta in recordings], len(recordings))
+
+    fif_targets: list[Path] = []
+    if fif_dir is not None:
+        if not isinstance(fif_dir, (str, Path)):
+            raise TypeError(f"fif_dir must be a str or pathlib.Path, got {type(fif_dir).__name__}.")
+        fif_dir = Path(fif_dir)
+        if not fif_dir.is_dir():
+            raise FileNotFoundError(f"fif_dir {fif_dir} is not an existing directory.")
+        fif_targets = [fif_dir / f"recording-{i:03d}-epo.fif" for i in range(len(recordings))]
+        clashes = [str(p) for t in fif_targets for p in (t, t.with_suffix(".json")) if p.exists()]
+        if clashes:
+            raise FileExistsError(f"Files already exist in fif_dir: {clashes}. "
+                                  "Use an empty directory, or remove them first.")
 
     pipeline = EEGPipeline(config)
     kept_index, kept_epochs, kept_meta, kept_records, failures = [], [], [], [], []
@@ -317,6 +342,11 @@ def prepare_recordings(
             f"{f['index']} {dict(f['metadata'])}: {f['error']}: {f['message']}" for f in failures))
     dataset = combine_epochs(kept_epochs, metadata=kept_meta, records=kept_records,
                              ch_types=ch_types)
+    if fif_targets:
+        from eeg_decoder.dataset.fif import save_epochs_fif  # fif imports core
+
+        for i, epochs, meta, record in zip(kept_index, kept_epochs, kept_meta, kept_records):
+            save_epochs_fif(epochs, fif_targets[i], metadata=meta, record=record)
     # Index everything by position in the *input* list, so a skipped recording
     # does not shift the others: `recording`, `metadata`, and `records` all use
     # input positions, and a failed recording's record is None.

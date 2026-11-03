@@ -9,7 +9,7 @@ It turns raw recordings into clean, documented, analysis-ready data for any
 downstream use (ERP analysis, statistics, machine learning, deep learning),
 and stops there.
 
-> **Status: pre-alpha (Phases 1-5 complete, Phase 6 in progress).** Available: `to_raw`,
+> **Status: pre-alpha (Phases 1-6 complete).** Available: `to_raw`,
 > `bandpass`, `notch`, `rereference`, `resample`, `make_epochs`,
 > `baseline_correct`, `reject_epochs`, the `EEGPipeline` /
 > `PreprocessingConfig` that chains them, artifact handling
@@ -21,7 +21,9 @@ and stops there.
 > (`welch_psd`, `band_power`, `time_stats`, `hjorth`, `morlet_tfr`), and
 > dataset preparation (`check_compatible`, `match_channels`,
 > `prepare_recordings`, `combine_epochs`, `EpochDataset`, `save_npz`,
-> `load_npz`). Next: `.fif` export. See the [roadmap](docs/ROADMAP.md).
+> `load_npz`, `save_epochs_fif`, `load_epochs_fif`). Next: scientific
+> validation, documentation, benchmarking, and release. See the
+> [roadmap](docs/ROADMAP.md).
 
 ## Scope
 
@@ -404,6 +406,44 @@ ds = load_npz("dataset.npz")
 - **Export.** `save_npz` writes plain arrays and JSON text only (no pickled
   objects) and refuses to overwrite unless `overwrite=True`.
 
+### MNE `.fif` files per recording
+
+```python
+from eeg_decoder.dataset import save_epochs_fif, load_epochs_fif, combine_epochs
+
+# while preparing: one <name>-epo.fif + <name>-epo.json per recording
+ds = prepare_recordings(recordings, config, ch_types=["eeg"], fif_dir="prepared/")
+
+# or for any epochs object
+save_epochs_fif(epochs, "prepared/sub-01-epo.fif", metadata={"subject": "01"}, record=record)
+epochs, sidecar = load_epochs_fif("prepared/sub-01-epo.fif")  # sidecar: metadata, record
+
+# rebuild a dataset later from the files
+loaded = [load_epochs_fif(p) for p in sorted(Path("prepared").glob("*-epo.fif"))]
+ds = combine_epochs([e for e, _ in loaded], metadata=[s["metadata"] for _, s in loaded],
+                    records=[s["record"] for _, s in loaded], ch_types=["eeg"])
+```
+
+- The `.fif` file keeps the full MNE `Epochs` (channel positions, filter
+  settings, reference flag, baseline, events, `drop_log`); the JSON sidecar
+  keeps what MNE does not: your metadata and the processing record.
+- **Exact data.** MNE saves epochs in single precision by default, so data
+  would reload only approximately; files here are written in double precision
+  and round-trip exactly.
+- **Anonymized by default.** A plain MNE save keeps the measurement date and
+  subject information (name, birthday, hospital ID). The written copy is
+  anonymized with MNE's `anonymize()` unless you pass `anonymize=False`; the
+  sidecar records which was done.
+- Names must end in `-epo.fif` (MNE's convention, which MNE itself does not
+  enforce). Nothing is overwritten unless `overwrite=True`; with `fif_dir`,
+  `prepare_recordings` refuses to start if a target file exists and writes
+  files only after all recordings were combined successfully. With
+  `fif_dir`, files hold every channel, independent of `ch_types`.
+- The `.fif` format stores sampling rate, filter edges, epoch start, and
+  baseline in single precision (a 0.1 Hz high-pass reloads as 0.1000000015),
+  so the consistency check compares these with a small tolerance and reloaded
+  epochs combine with freshly computed ones.
+
 ## Optional feature extraction
 
 Fixed, non-learned descriptors for users who want them. **Not needed to
@@ -489,8 +529,8 @@ Full details, design rules, and per-phase considerations:
 | 3 | Artifact detection and correction (bad channels, optional ICA) | Done |
 | 4 | Signal-quality assessment and visualization | Done |
 | 5 | Optional fixed feature extraction (PSD, band power, Hjorth, time-frequency) | Done |
-| 6 | Dataset preparation, metadata preservation, and export | In progress (6a, 6b, `.npz` export done; `.fif` export next) |
-| 7 | Scientific validation, documentation, benchmarking, and release | Planned |
+| 6 | Dataset preparation, metadata preservation, and export | Done |
+| 7 | Scientific validation, documentation, benchmarking, and release | Next |
 
 ## Known limitations
 
