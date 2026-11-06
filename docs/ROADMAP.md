@@ -71,7 +71,7 @@ feeds into such code, but that code is not part of the library.
 | 4 | Signal-quality assessment and visualization | Done (4a-4b) |
 | 5 | Optional fixed feature extraction | Done |
 | 6 | Dataset preparation, metadata preservation, and export | Done (6a-6c) |
-| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a-7c done, 7d next) |
+| 7 | Scientific validation, documentation, benchmarking, and release | Done; 0.1.0 awaits publishing |
 
 Each phase starts with a design review before code is written and is split
 into small sub-milestones. Function names in planned phases are proposals.
@@ -202,7 +202,7 @@ Decisions:
 | 7a | Real-data validation on PhysioNet EEGBCI; MNE behaviours pinned and documented | Done, awaiting first real-data run |
 | 7b | Documentation: Sphinx + numpydoc + pydata theme, user guide, API reference, notebooks, GitHub Pages | Done |
 | 7c | Benchmarks of the library itself: runtime and peak memory per operation and pipeline, versus calling MNE directly | Done |
-| 7d | Release `0.1.0` as `eeg-decoder`: changelog, CI on Python 3.11-3.13 x MNE 1.13 and latest, `build` + `twine check`, trusted publishing to PyPI on a version tag | Planned |
+| 7d | Release `0.1.0` as `eeg-decoder`: changelog, CI on Python 3.11-3.13 x MNE 1.13 and latest, `build` + `twine check`, trusted publishing to PyPI on a version tag | Done; publishing is the owner's step |
 
 **7a: scientific validation.**
 
@@ -268,6 +268,27 @@ Decisions:
   (464 vs 316 MB) because each step copies; `recording_quality` peaks at
   about 5 copies. Both are optimisation candidates for a later change, with
   the benchmark guarding that outputs stay identical.
+
+**7d: release preparation.**
+
+- Version `0.1.0`, `CHANGELOG.md` (Keep a Changelog) with the versioning
+  policy: semantic versioning; while 0.x, minor releases may change the API
+  and every change is listed.
+- Minimum versions are tested, not assumed: NumPy 2.1, SciPy 1.14 (now a
+  declared dependency, since the library imports it directly), MNE 1.13, and
+  matplotlib 3.9 on Python 3.11 pass the full suite. The `minimum` CI job
+  installs them from `.github/minimum-versions.txt`; a test keeps that file
+  equal to the floors in `pyproject.toml`.
+- The `package` CI job builds the sdist and wheel, runs `twine check
+  --strict`, and runs the test suite against the installed wheel. The sdist
+  includes `docs/`, `validation/`, and `benchmarks/`, so its tests run too.
+- `release.yml` publishes to PyPI on a `v*.*.*` tag through trusted
+  publishing (no stored token), after checking that the tag, `__version__`,
+  and a dated changelog entry agree; a manual run publishes to TestPyPI.
+- README links are absolute so they work on PyPI; project URLs, author, and
+  the Alpha classifier are set.
+- Publishing needs the owner: register the trusted publisher on PyPI, date
+  the changelog entry, and push a signed tag.
 
 ## Changes from the original roadmap
 

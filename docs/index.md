@@ -58,5 +58,6 @@ module-notes
 mne-behaviours
 validation
 benchmarks
+changelog
 ROADMAP
 ```

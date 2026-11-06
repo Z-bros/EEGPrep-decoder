@@ -1,0 +1,10 @@
+# The source distribution holds everything the test suite needs, so
+# `pytest` runs from an unpacked sdist (tests read these directories).
+include CHANGELOG.md
+graft tests
+graft docs
+graft validation
+graft benchmarks
+prune docs/_build
+prune docs/generated
+global-exclude *.py[cod] __pycache__ .ipynb_checkpoints

@@ -1,0 +1,6 @@
+# Oldest supported versions, tested by the "minimum" job in tests.yml.
+# Must match the floors in pyproject.toml (tests/test_packaging.py checks).
+numpy==2.1.*
+scipy==1.14.*
+mne==1.13.*
+matplotlib==3.9.*

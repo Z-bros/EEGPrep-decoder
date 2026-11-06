@@ -10,24 +10,32 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [{ name = "Zidane" }]
+authors = [{ name = "Zidane Fatuna" }]
 keywords = ["EEG", "signal-processing", "preprocessing", "artifacts", "data-preparation", "MNE"]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
-# MNE-Python is the preprocessing backbone (filters, referencing, epochs) and
-# brings SciPy with it. The floor is the version whose API was verified.
-# Further requirements (e.g. ICA backends, export formats) are added as optional
-# dependency groups in the phase that needs them; the core stays model-free.
-# matplotlib is already required by MNE; it is listed because the quality plots
-# import it directly (same floor as MNE 1.13).
-dependencies = ["numpy>=2.1", "mne>=1.13", "matplotlib>=3.9"]
+
+# MNE-Python is the preprocessing backbone (filters, referencing, epochs).
+# SciPy and matplotlib come with MNE but are listed because the library imports
+# them directly. Every floor is tested in CI (the "minimum" job in tests.yml):
+# MNE 1.13 is the version whose API was verified; NumPy, SciPy, and matplotlib
+# floors are MNE 1.13's own. Further requirements go in optional groups.
+dependencies = ["numpy>=2.1", "scipy>=1.14", "mne>=1.13", "matplotlib>=3.9"]
+
+[project.urls]
+Homepage = "https://github.com/Z-bros/EEGPrep-decoder"
+Documentation = "https://github.com/Z-bros/EEGPrep-decoder/tree/main/docs"
+Source = "https://github.com/Z-bros/EEGPrep-decoder"
+Issues = "https://github.com/Z-bros/EEGPrep-decoder/issues"
+Changelog = "https://github.com/Z-bros/EEGPrep-decoder/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

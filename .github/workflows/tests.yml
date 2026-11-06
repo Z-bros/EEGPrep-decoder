@@ -23,3 +23,39 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Run tests
         run: pytest
+
+  minimum:
+    # Oldest supported Python and dependency versions (the floors we declare).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install with minimum versions
+        run: python -m pip install -e ".[dev]" -c .github/minimum-versions.txt
+      - name: Show versions
+        run: python -c "import numpy, scipy, mne, matplotlib; print(numpy.__version__, scipy.__version__, mne.__version__, matplotlib.__version__)"
+      - name: Run tests
+        run: pytest
+
+  package:
+    # Build the sdist and wheel exactly as a release would, check them, and run
+    # the test suite against the installed wheel (not the source checkout).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build
+        run: |
+          python -m pip install build twine
+          python -m build
+          python -m twine check --strict dist/*
+      - name: Test the installed wheel
+        run: |
+          python -m venv /tmp/wheel-env
+          /tmp/wheel-env/bin/pip install dist/*.whl pytest
+          cd /tmp && /tmp/wheel-env/bin/python -c "import eeg_decoder, sys; print(eeg_decoder.__version__, eeg_decoder.__file__); assert 'site-packages' in eeg_decoder.__file__"
+          cd "$GITHUB_WORKSPACE" && mv src src.hidden && /tmp/wheel-env/bin/python -m pytest -p no:cacheprovider

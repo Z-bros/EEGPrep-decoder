@@ -3,21 +3,29 @@
 Requires Python 3.11 or newer.
 
 ```bash
+pip install eeg-decoder          # once 0.1.0 is on PyPI
+pip install "eeg-decoder[ica]"   # with an optional group
+```
+
+From source:
+
+```bash
 git clone https://github.com/Z-bros/EEGPrep-decoder.git
 cd EEGPrep-decoder
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 ```
 
-The core install needs only NumPy, MNE-Python (which brings SciPy), and
-matplotlib. Optional groups add only what a capability needs, so preparing
-data never pulls in a modelling stack:
+The core install needs only NumPy, SciPy, MNE-Python, and matplotlib, each
+tested in CI at its minimum supported version (NumPy 2.1, SciPy 1.14, MNE
+1.13, matplotlib 3.9, on Python 3.11). Optional groups add only what a
+capability needs, so preparing data never pulls in a modelling stack:
 
 | Extra | Adds | For |
 |---|---|---|
 | `ica` | `python-picard`, `scikit-learn` | `fit_ica(method="picard")` or `"fastica"`; the default `"infomax"` needs neither |
 | `dev` | `pytest` | running the test suite |
-| `docs` | Sphinx, pydata theme, numpydoc, MyST-parser | building this documentation |
+| `docs` | Sphinx, pydata theme, numpydoc, MyST-parser, MyST-NB, ipykernel | building this documentation and running its notebooks |
 
 ```bash
 pip install -e ".[ica]"     # or ".[dev]", ".[docs]", ".[dev,ica]"
