@@ -1,0 +1,48 @@
+name: benchmarks
+
+# Runtime and memory of EEGPrep-decoder vs MNE-Python (benchmarks/run.py).
+# Manual only: timings need a quiet machine and "large" holds ~1 GB per copy.
+
+on:
+  workflow_dispatch:
+    inputs:
+      size:
+        description: "Data size"
+        type: choice
+        options: [small, medium, large]
+        default: large
+      repeats:
+        description: "Repeats per operation (median is reported)"
+        default: "3"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SIZE: ${{ github.event.inputs.size }}
+      REPEATS: ${{ github.event.inputs.repeats }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Run benchmarks
+        run: python benchmarks/run.py --size "$SIZE" --repeats "$REPEATS" --out benchmark-report
+      - name: Summary
+        if: always()
+        run: cat benchmark-report/benchmarks.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report-${{ github.event.inputs.size }}
+          path: benchmark-report/

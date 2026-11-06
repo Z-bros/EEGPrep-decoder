@@ -43,11 +43,20 @@ guide/reproducibility
 
 ```{toctree}
 :maxdepth: 1
+:caption: Examples
+
+examples/01_raw_to_epochs
+examples/02_many_recordings
+```
+
+```{toctree}
+:maxdepth: 1
 :caption: Reference
 
 api
 module-notes
 mne-behaviours
 validation
+benchmarks
 ROADMAP
 ```

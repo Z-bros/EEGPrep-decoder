@@ -99,7 +99,12 @@ pages are Markdown and also read well on GitHub.
 - Reference: the API reference (generated from the docstrings), scientific
   notes by module, and [MNE behaviours](docs/mne-behaviours.md) the library
   works around, each pinned by a test
+- Example notebooks, run on every docs build:
+  [from a raw recording to clean epochs](docs/examples/01_raw_to_epochs.ipynb),
+  [many recordings, one dataset](docs/examples/02_many_recordings.ipynb)
 - [Scientific validation](docs/validation.md) on real EEG (PhysioNet EEGBCI)
+- [Benchmarks](docs/benchmarks.md): runtime and memory versus calling MNE
+  directly (same speed, identical output)
 
 Build it locally:
 
@@ -131,7 +136,7 @@ Full details, design rules, and per-phase considerations:
 | 4 | Signal-quality assessment and visualization | Done |
 | 5 | Optional fixed feature extraction (PSD, band power, Hjorth, time-frequency) | Done |
 | 6 | Dataset preparation, metadata preservation, and export | Done |
-| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a done, 7b) |
+| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a-7c done, 7d next) |
 
 ## Known limitations
 
