@@ -16,17 +16,22 @@ release = _version("eeg-decoder")
 version = release
 
 extensions = [
-    "myst_parser",               # Markdown pages (they also render on GitHub)
+    "myst_nb",                   # Markdown pages and notebooks (includes myst_parser)
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "numpydoc",                  # NumPy-style docstrings
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
 ]
-source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
-exclude_patterns = ["_build"]
+exclude_patterns = ["_build", "**.ipynb_checkpoints"]
 templates_path = ["_templates"]
 myst_heading_anchors = 3
+
+# Notebooks are stored without outputs and executed on every build, so an
+# example that stops working fails the (warnings-as-errors) build.
+nb_execution_mode = "force"
+nb_execution_raise_on_error = True
+nb_execution_timeout = 300
 
 autosummary_generate = True
 autodoc_default_options = {"members": True, "inherited-members": False}
@@ -46,8 +51,8 @@ html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 # Only the API reference has sub-pages; elsewhere the left sidebar would be empty.
-html_sidebars = {page: [] for page in ("index", "install", "guide/*", "module-notes",
-                                        "mne-behaviours", "validation", "ROADMAP")}
+html_sidebars = {page: [] for page in ("index", "install", "guide/*", "examples/*",
+                                        "module-notes", "mne-behaviours", "validation", "ROADMAP")}
 html_title = f"EEGPrep-decoder {release}"
 html_theme_options = {
     "github_url": "https://github.com/Z-bros/EEGPrep-decoder",

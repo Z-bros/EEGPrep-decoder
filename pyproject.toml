@@ -34,7 +34,10 @@ dev = ["pytest>=8"]
 # Only for ICA method="picard" / "fastica"; the default "infomax" needs only MNE.
 ica = ["python-picard>=0.8", "scikit-learn>=1.5"]
 # Building the documentation (tested with these versions).
-docs = ["sphinx>=9", "pydata-sphinx-theme>=0.24", "numpydoc>=1.11", "myst-parser>=5"]
+docs = [
+    "sphinx>=9", "pydata-sphinx-theme>=0.24", "numpydoc>=1.11", "myst-parser>=5",
+    "myst-nb>=1.4", "ipykernel>=7",  # execute the example notebooks
+]
 
 [tool.setuptools.dynamic]
 version = { attr = "eeg_decoder.__version__" }

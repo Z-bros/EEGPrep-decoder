@@ -71,7 +71,7 @@ feeds into such code, but that code is not part of the library.
 | 4 | Signal-quality assessment and visualization | Done (4a-4b) |
 | 5 | Optional fixed feature extraction | Done |
 | 6 | Dataset preparation, metadata preservation, and export | Done (6a-6c) |
-| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a done, 7b) |
+| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a-7b done, 7c next) |
 
 Each phase starts with a design review before code is written and is split
 into small sub-milestones. Function names in planned phases are proposals.
@@ -200,7 +200,7 @@ Decisions:
 | Sub-phase | Content | Status |
 |---|---|---|
 | 7a | Real-data validation on PhysioNet EEGBCI; MNE behaviours pinned and documented | Done, awaiting first real-data run |
-| 7b | Documentation: Sphinx + numpydoc + pydata theme, user guide, API reference, notebooks, GitHub Pages | Site done; notebooks next |
+| 7b | Documentation: Sphinx + numpydoc + pydata theme, user guide, API reference, notebooks, GitHub Pages | Done |
 | 7c | Benchmarks of the library itself: runtime and peak memory per operation and pipeline, versus calling MNE directly | Planned |
 | 7d | Release `0.1.0` as `eeg-decoder`: changelog, CI on Python 3.11-3.13 x MNE 1.13 and latest, `build` + `twine check`, trusted publishing to PyPI on a version tag | Planned |
 
@@ -245,7 +245,13 @@ Decisions:
   `true`. Install with the `docs` extra.
 - The strict build caught four docstrings whose `|x|` notation was read as
   a reStructuredText substitution; "see module notes" became links.
-- Next: example notebooks (executed in CI, so they cannot go stale).
+- Two example notebooks in `docs/examples/` (synthetic data, no downloads):
+  one recording from raw to clean epochs (quality, bad channels, a saved
+  configuration, PSD and rejection plots, an ERP, optional features), and
+  many recordings into one dataset (consistency errors, collecting failures,
+  `.npz` / `.fif` export, leave-one-subject-out indices). They are stored
+  without outputs (a test enforces it) and executed by MyST-NB on every docs
+  build, so a broken example fails CI.
 
 ## Changes from the original roadmap
 
