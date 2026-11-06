@@ -71,7 +71,7 @@ feeds into such code, but that code is not part of the library.
 | 4 | Signal-quality assessment and visualization | Done (4a-4b) |
 | 5 | Optional fixed feature extraction | Done |
 | 6 | Dataset preparation, metadata preservation, and export | Done (6a-6c) |
-| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a) |
+| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a done, 7b) |
 
 Each phase starts with a design review before code is written and is split
 into small sub-milestones. Function names in planned phases are proposals.
@@ -200,7 +200,7 @@ Decisions:
 | Sub-phase | Content | Status |
 |---|---|---|
 | 7a | Real-data validation on PhysioNet EEGBCI; MNE behaviours pinned and documented | Done, awaiting first real-data run |
-| 7b | Documentation: Sphinx + numpydoc + pydata theme, user guide, API reference, notebooks, GitHub Pages | Planned |
+| 7b | Documentation: Sphinx + numpydoc + pydata theme, user guide, API reference, notebooks, GitHub Pages | Site done; notebooks next |
 | 7c | Benchmarks of the library itself: runtime and peak memory per operation and pipeline, versus calling MNE directly | Planned |
 | 7d | Release `0.1.0` as `eeg-decoder`: changelog, CI on Python 3.11-3.13 x MNE 1.13 and latest, `build` + `twine check`, trusted publishing to PyPI on a version tag | Planned |
 
@@ -230,6 +230,22 @@ Decisions:
   the library works around, each with its pinning test; 12 new direct pins
   are in `tests/test_mne_behaviour.py`. Writing them corrected one earlier
   claim (MNE metadata without pandas, Phase 6).
+
+**7b: documentation.**
+
+- Sphinx site in `docs/` (pydata theme, numpydoc, MyST Markdown): landing
+  page, installation, a user guide per area (moved from the README, which is
+  now a short overview), an API reference generated from the docstrings, the
+  module docstrings as "scientific notes by module", the MNE behaviours, the
+  validation, and this roadmap. Guide pages stay plain Markdown so they also
+  read well on GitHub.
+- The `docs` workflow builds with warnings as errors on every push and pull
+  request; it deploys to GitHub Pages from `main` once Pages is enabled
+  (Source: GitHub Actions) and the repository variable `DOCS_DEPLOY` is
+  `true`. Install with the `docs` extra.
+- The strict build caught four docstrings whose `|x|` notation was read as
+  a reStructuredText substitution; "see module notes" became links.
+- Next: example notebooks (executed in CI, so they cannot go stale).
 
 ## Changes from the original roadmap
 

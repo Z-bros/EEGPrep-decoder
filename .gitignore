@@ -35,3 +35,7 @@ htmlcov/
 *.eeg
 *.gdf
 data/
+
+# Sphinx build output and generated API stubs
+docs/_build/
+docs/generated/

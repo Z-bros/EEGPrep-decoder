@@ -59,7 +59,8 @@ def rereference(
         changes the meaning of every channel and must be explicit.
     allow_bads : bool, default=False
         If False, raise when any EEG channel is listed in ``info["bads"]``
-        (see module notes). If True, follow MNE: bad channels are excluded
+        (see :mod:`eeg_decoder.preprocessing.referencing`). If True, follow
+        MNE: bad channels are excluded
         from the reference and left in the old reference.
 
     Returns

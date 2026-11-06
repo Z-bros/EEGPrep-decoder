@@ -68,7 +68,7 @@ def save_epochs_fif(
         JSON-serializable processing record, e.g. from :meth:`EEGPipeline.run`.
     anonymize : bool, default=True
         Remove the measurement date and subject information from the written
-        copy (see module notes). The input is never modified.
+        copy (see :mod:`eeg_decoder.dataset.fif`). The input is never modified.
     overwrite : bool, default=False
         Replace existing files. Otherwise an existing ``.fif`` or sidecar raises.
 

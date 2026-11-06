@@ -155,7 +155,7 @@ def assess_channels(
     deviation_threshold : float, default=5.0
         Absolute robust z-score of channel amplitude above which a channel deviates.
     correlation_threshold : float, default=0.4
-        Minimum acceptable maximum |correlation| with any other channel per window.
+        Minimum acceptable maximum ``|correlation|`` with any other channel per window.
     correlation_window_s : float, default=1.0
         Window length in seconds for the correlation criterion.
     max_low_correlation_fraction : float, default=0.01

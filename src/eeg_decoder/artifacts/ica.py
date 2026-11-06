@@ -232,9 +232,9 @@ def find_artifact_components(
         ECG channel name. MNE band-passes it 8-16 Hz before correlating.
     measure : {"zscore", "correlation"}, default="zscore"
         ``"zscore"`` (MNE's default): a component is selected when the
-        z-score of its |correlation| across components exceeds
+        z-score of its ``|correlation|`` across components exceeds
         ``threshold`` (iterated twice, MNE's rule). ``"correlation"``: when
-        its |correlation| itself exceeds ``threshold`` (in (0, 1)), which
+        its ``|correlation|`` itself exceeds ``threshold`` (in (0, 1)), which
         does not depend on the number of components.
     threshold : float, default=3.0
         Threshold for ``measure``.
@@ -265,7 +265,7 @@ def find_artifact_components(
 
     MNE's z-score rule is *iterated*: after removing the selected components
     it z-scores the rest again. With a low threshold this can add components
-    whose correlation is near zero (verified: |r| = 0.09 selected at
+    whose correlation is near zero (verified: ``|r| = 0.09`` selected at
     threshold 2.5 next to the true blink component). Always review
     ``scores`` before applying; ``measure="correlation"`` avoids this.
     """

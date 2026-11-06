@@ -92,7 +92,8 @@ def hjorth(epochs: mne.BaseEpochs, *, include_bads: bool = False) -> FeatureArra
     Parameters
     ----------
     epochs : mne.BaseEpochs
-        Epoched data, ideally low-pass filtered (see module notes). Not modified.
+        Epoched data, ideally low-pass filtered (see
+        :mod:`eeg_decoder.features.temporal`). Not modified.
     include_bads : bool, default=False
         Include channels marked bad.
 

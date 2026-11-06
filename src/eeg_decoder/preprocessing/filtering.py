@@ -112,7 +112,8 @@ def bandpass(
     picks : str, list of str, or None, default=None
         Channels to filter, using MNE's convention. ``None`` filters EEG
         channels (MNE "data" channels), *including* channels marked bad, but
-        **not** EOG, ECG, EMG, stim, or misc channels (see module notes).
+        **not** EOG, ECG, EMG, stim, or misc channels (see
+        :mod:`eeg_decoder.preprocessing.filtering`).
         With a subset of channels, ``info["highpass"/"lowpass"]`` is not updated.
 
     Returns

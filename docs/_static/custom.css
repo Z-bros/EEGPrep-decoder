@@ -1,0 +1,7 @@
+/* Long identifiers in table cells (e.g. test names) wrap instead of overflowing.
+   docutils puts the text of inline code in span.pre, which does not wrap. */
+table.table code,
+table.table code span.pre {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

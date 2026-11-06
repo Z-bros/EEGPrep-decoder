@@ -66,7 +66,7 @@ def resample(
         New sampling frequency in Hz (finite, > 0). Down- and upsampling are
         both allowed; upsampling adds samples but no information.
     method : {"fft", "polyphase"}, default="fft"
-        Resampling algorithm (see module notes).
+        Resampling algorithm (see :mod:`eeg_decoder.preprocessing.resampling`).
 
     Returns
     -------
