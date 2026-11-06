@@ -9,12 +9,12 @@ It turns raw recordings into clean, documented, analysis-ready data for any
 downstream use (ERP analysis, statistics, machine learning, deep learning),
 and stops there.
 
-> **Status: pre-alpha.** Phases 1-6 are complete: preprocessing and a
-> reproducible pipeline, artifact handling (bad channels, annotations,
-> optional ICA), signal-quality reports and plots, optional features, and
-> dataset preparation and export. Phase 7 (scientific validation,
-> documentation, benchmarking, release) is in progress. See the
-> [roadmap](docs/ROADMAP.md).
+> **Status: alpha (0.1.0).** Preprocessing and a reproducible pipeline,
+> artifact handling (bad channels, annotations, optional ICA), signal-quality
+> reports and plots, optional features, and dataset preparation and export,
+> validated on real EEG and benchmarked against MNE. While the version is
+> 0.x, minor releases may change the API; every change is in the
+> [changelog](https://github.com/Z-bros/EEGPrep-decoder/blob/main/CHANGELOG.md). See the [roadmap](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/ROADMAP.md).
 
 ## Scope
 
@@ -39,14 +39,21 @@ step, and preparing EEG data never requires it.
 Requires Python 3.11 or newer.
 
 ```bash
+pip install eeg-decoder           # once 0.1.0 is on PyPI; extras: "eeg-decoder[ica]"
+```
+
+From source (for development):
+
+```bash
 git clone https://github.com/Z-bros/EEGPrep-decoder.git
 cd EEGPrep-decoder
 python -m venv .venv && source .venv/bin/activate
-pip install -e .            # extras: ".[ica]", ".[dev]", ".[docs]"
+pip install -e ".[dev]"           # extras: ".[ica]", ".[docs]"
 ```
 
-The core install needs only NumPy, MNE-Python (which brings SciPy), and
-matplotlib; see [Installation](docs/install.md) for the optional groups.
+The core install needs only NumPy, SciPy, MNE-Python, and matplotlib, each
+tested at its minimum supported version; see [Installation](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/install.md)
+for the optional groups.
 
 ## Quick start
 
@@ -83,27 +90,27 @@ print(epochs.drop_log)                       # which events were dropped, and wh
 ```
 
 The same chain runs from a saved JSON configuration, with a record of every
-step, through `EEGPipeline`; see the [preprocessing guide](docs/guide/preprocessing.md).
+step, through `EEGPipeline`; see the [preprocessing guide](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/guide/preprocessing.md).
 
 ## Documentation
 
-The documentation is a Sphinx site built from [`docs/`](docs/index.md); its
+The documentation is a Sphinx site built from [`docs/`](https://github.com/Z-bros/EEGPrep-decoder/tree/main/docs); its
 pages are Markdown and also read well on GitHub.
 
-- User guide: [preprocessing and pipelines](docs/guide/preprocessing.md),
-  [artifact handling](docs/guide/artifacts.md),
-  [signal quality](docs/guide/quality.md),
-  [dataset preparation and export](docs/guide/dataset.md),
-  [optional features](docs/guide/features.md),
-  [conventions and reproducibility](docs/guide/reproducibility.md)
+- User guide: [preprocessing and pipelines](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/guide/preprocessing.md),
+  [artifact handling](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/guide/artifacts.md),
+  [signal quality](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/guide/quality.md),
+  [dataset preparation and export](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/guide/dataset.md),
+  [optional features](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/guide/features.md),
+  [conventions and reproducibility](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/guide/reproducibility.md)
 - Reference: the API reference (generated from the docstrings), scientific
-  notes by module, and [MNE behaviours](docs/mne-behaviours.md) the library
+  notes by module, and [MNE behaviours](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/mne-behaviours.md) the library
   works around, each pinned by a test
 - Example notebooks, run on every docs build:
-  [from a raw recording to clean epochs](docs/examples/01_raw_to_epochs.ipynb),
-  [many recordings, one dataset](docs/examples/02_many_recordings.ipynb)
-- [Scientific validation](docs/validation.md) on real EEG (PhysioNet EEGBCI)
-- [Benchmarks](docs/benchmarks.md): runtime and memory versus calling MNE
+  [from a raw recording to clean epochs](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/examples/01_raw_to_epochs.ipynb),
+  [many recordings, one dataset](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/examples/02_many_recordings.ipynb)
+- [Scientific validation](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/validation.md) on real EEG (PhysioNet EEGBCI)
+- [Benchmarks](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/benchmarks.md): runtime and memory versus calling MNE
   directly (same speed, identical output)
 
 Build it locally:
@@ -126,7 +133,7 @@ spectral content. Do not commit EEG recordings (see `.gitignore`).
 ## Roadmap
 
 Full details, design rules, and per-phase considerations:
-[docs/ROADMAP.md](docs/ROADMAP.md).
+[docs/ROADMAP.md](https://github.com/Z-bros/EEGPrep-decoder/blob/main/docs/ROADMAP.md).
 
 | Phase | Topic | Status |
 |---|---|---|
@@ -136,11 +143,12 @@ Full details, design rules, and per-phase considerations:
 | 4 | Signal-quality assessment and visualization | Done |
 | 5 | Optional fixed feature extraction (PSD, band power, Hjorth, time-frequency) | Done |
 | 6 | Dataset preparation, metadata preservation, and export | Done |
-| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a-7c done, 7d next) |
+| 7 | Scientific validation, documentation, benchmarking, and release | Done; 0.1.0 awaits publishing |
 
 ## Known limitations
 
-Pre-alpha; the API will change.
+Alpha: while the version is 0.x, minor releases may change the API (listed
+in the [changelog](https://github.com/Z-bros/EEGPrep-decoder/blob/main/CHANGELOG.md)).
 
 - Only FIR filtering is exposed; IIR filters and custom transition bandwidths
   are not yet configurable.
@@ -154,4 +162,4 @@ Pre-alpha; the API will change.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/Z-bros/EEGPrep-decoder/blob/main/LICENSE).

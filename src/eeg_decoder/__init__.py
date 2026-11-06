@@ -8,6 +8,6 @@ and the optional ``features``.
 
 from eeg_decoder.config import EEGConfig
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 __all__ = ["EEGConfig", "__version__"]

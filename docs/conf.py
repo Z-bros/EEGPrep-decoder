@@ -53,7 +53,7 @@ html_css_files = ["custom.css"]
 # Only the API reference has sub-pages; elsewhere the left sidebar would be empty.
 html_sidebars = {page: [] for page in (
     "index", "install", "guide/*", "examples/*", "module-notes", "mne-behaviours",
-    "validation", "benchmarks", "ROADMAP")}
+    "validation", "benchmarks", "changelog", "ROADMAP")}
 html_title = f"EEGPrep-decoder {release}"
 html_theme_options = {
     "github_url": "https://github.com/Z-bros/EEGPrep-decoder",
