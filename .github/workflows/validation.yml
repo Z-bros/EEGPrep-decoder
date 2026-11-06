@@ -1,0 +1,47 @@
+name: validation
+
+# Real-data validation on PhysioNet EEGBCI (see validation/eegbci.py).
+# Separate from the test suite: it downloads data and takes several minutes,
+# so it runs on demand and once a month, never on every push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      subjects:
+        description: "Subjects, e.g. 1-10 or 1,4,7 (1-109)"
+        default: "1-10"
+        required: true
+  schedule:
+    - cron: "17 3 1 * *"  # 03:17 UTC on the 1st of each month
+
+permissions:
+  contents: read
+
+jobs:
+  eegbci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SUBJECTS: ${{ github.event.inputs.subjects || '1-10' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install package and downloader
+        run: python -m pip install -e . pooch
+      - name: Cache EEGBCI recordings
+        uses: actions/cache@v4
+        with:
+          path: ~/eegbci-data
+          key: eegbci-${{ env.SUBJECTS }}
+      - name: Run validation
+        run: python validation/eegbci.py --subjects "$SUBJECTS" --data-path ~/eegbci-data --out validation-report
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: validation-report/

@@ -71,7 +71,7 @@ feeds into such code, but that code is not part of the library.
 | 4 | Signal-quality assessment and visualization | Done (4a-4b) |
 | 5 | Optional fixed feature extraction | Done |
 | 6 | Dataset preparation, metadata preservation, and export | Done (6a-6c) |
-| 7 | Scientific validation, documentation, benchmarking, and release | Next |
+| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a) |
 
 Each phase starts with a design review before code is written and is split
 into small sub-milestones. Function names in planned phases are proposals.
@@ -178,8 +178,9 @@ Decisions:
 
 - Identifiers live in the library's own per-epoch arrays (`groups`), so the
   core stays pandas-free; `EpochDataset.to_dataframe()` works when pandas is
-  installed. MNE's `epochs.metadata` would have required pandas (verified on
-  MNE 1.13).
+  installed. Without pandas, MNE's `epochs.metadata` is only a plain list of
+  dicts that cannot be queried (corrected in Phase 7a; pinned in
+  `tests/test_mne_behaviour.py`).
 - The first failing recording stops the run by default;
   `on_error="collect"` skips and lists failures instead.
 - Every channel is kept unless `ch_types` (e.g. `["eeg"]`) is passed.
@@ -192,25 +193,43 @@ Decisions:
   float32, so `check_compatible` compares them with a tolerance (1e-6
   relative; half a sample for times) instead of exactly.
 
-## Planned
+## In progress
 
 ### Phase 7: scientific validation, documentation, benchmarking, and release
 
-- **Scientific validation.** Check every operation against trusted reference
-  implementations (MNE-Python, SciPy) and analytic expectations, building on
-  the existing tests; run the full workflow on public EEG datasets (licensing
-  checked) and document the outcomes, e.g. that filters, referencing,
-  bad-channel assessment, and ICA behave as described; record every MNE
-  behaviour the library works around, with a test pinning it, so a change in
-  MNE is caught.
-- **Documentation.** User guide and API reference (e.g. Sphinx or MkDocs)
-  stating the scientific assumptions of every operation, plus example
-  notebooks; reusable code stays in the package.
-- **Benchmarking of the library itself.** Runtime and memory of
-  preprocessing steps and pipelines, and numerical agreement with reference
-  implementations. No model-accuracy benchmarks.
-- **Release.** Versioning policy, changelog, CI across supported Python and
-  MNE versions, packaging checks, and a first PyPI release.
+| Sub-phase | Content | Status |
+|---|---|---|
+| 7a | Real-data validation on PhysioNet EEGBCI; MNE behaviours pinned and documented | Done, awaiting first real-data run |
+| 7b | Documentation: Sphinx + numpydoc + pydata theme, user guide, API reference, notebooks, GitHub Pages | Planned |
+| 7c | Benchmarks of the library itself: runtime and peak memory per operation and pipeline, versus calling MNE directly | Planned |
+| 7d | Release `0.1.0` as `eeg-decoder`: changelog, CI on Python 3.11-3.13 x MNE 1.13 and latest, `build` + `twine check`, trusted publishing to PyPI on a version tag | Planned |
+
+**7a: scientific validation.**
+
+- `validation/eegbci.py` (not part of the installed package) runs the library
+  end to end on the EEG Motor Movement/Imagery dataset (Schalk et al. 2004;
+  ODC-By 1.0), fetched with `mne.datasets.eegbci` (needs `pooch`): runs 1
+  and 2 (eyes open / closed rest) and 3, 7, 11 (left/right fist movement).
+- Pass/fail checks: units in volts; band-pass attenuation (>= 30 dB at
+  55-75 Hz); notch lowers 60 Hz line noise; Berger effect (occipital relative
+  alpha higher eyes-closed in >= 80 % of subjects); motor ERD (central
+  8-30 Hz power lower in movement than rest in >= 70 %); seeded ICA exactly
+  reproducible; every motor run passes `prepare_recordings`; exact `.npz`
+  round trip; no subject errors. Thresholds are sanity criteria for robust
+  effects; a sign-test p-value is reported, not used.
+- Descriptive only: flagged bad channels, ICA component proposals (frontal
+  channels as EOG proxy), epochs rejected.
+- Runs as the manual / monthly `validation` GitHub workflow (the build
+  workspace cannot reach PhysioNet); its logic is tested offline on synthetic
+  EEG with known, and with reversed, effects.
+- Finding: bad-channel assessment on an eyes-closed run flags occipital
+  channels for their genuine alpha amplitude (reproduced on synthetic data),
+  and interpolating them would erase the effect. The script assesses the
+  eyes-open run and applies its bad channels to both runs.
+- [docs/mne-behaviours.md](mne-behaviours.md) lists 20 MNE 1.13 behaviours
+  the library works around, each with its pinning test; 12 new direct pins
+  are in `tests/test_mne_behaviour.py`. Writing them corrected one earlier
+  claim (MNE metadata without pandas, Phase 6).
 
 ## Changes from the original roadmap
 
