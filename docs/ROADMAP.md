@@ -71,7 +71,7 @@ feeds into such code, but that code is not part of the library.
 | 4 | Signal-quality assessment and visualization | Done (4a-4b) |
 | 5 | Optional fixed feature extraction | Done |
 | 6 | Dataset preparation, metadata preservation, and export | Done (6a-6c) |
-| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a-7b done, 7c next) |
+| 7 | Scientific validation, documentation, benchmarking, and release | In progress (7a-7c done, 7d next) |
 
 Each phase starts with a design review before code is written and is split
 into small sub-milestones. Function names in planned phases are proposals.
@@ -201,7 +201,7 @@ Decisions:
 |---|---|---|
 | 7a | Real-data validation on PhysioNet EEGBCI; MNE behaviours pinned and documented | Done, awaiting first real-data run |
 | 7b | Documentation: Sphinx + numpydoc + pydata theme, user guide, API reference, notebooks, GitHub Pages | Done |
-| 7c | Benchmarks of the library itself: runtime and peak memory per operation and pipeline, versus calling MNE directly | Planned |
+| 7c | Benchmarks of the library itself: runtime and peak memory per operation and pipeline, versus calling MNE directly | Done |
 | 7d | Release `0.1.0` as `eeg-decoder`: changelog, CI on Python 3.11-3.13 x MNE 1.13 and latest, `build` + `twine check`, trusted publishing to PyPI on a version tag | Planned |
 
 **7a: scientific validation.**
@@ -252,6 +252,22 @@ Decisions:
   `.npz` / `.fif` export, leave-one-subject-out indices). They are stored
   without outputs (a test enforces it) and executed by MyST-NB on every docs
   build, so a broken example fails CI.
+
+**7c: benchmarks.**
+
+- `benchmarks/run.py` (not part of the installed package) times every
+  wrapped operation and the full pipeline next to the same MNE calls, checks
+  that outputs are identical, and measures peak memory (`tracemalloc`, a
+  lower bound), on seeded synthetic data at four sizes up to 64 ch x 1000 Hz
+  x 30 min. Results and method: [benchmarks](benchmarks.md).
+- `tests/test_benchmarks.py` runs the smallest size in the test suite, so a
+  wrapper that stops matching MNE fails CI; the manual `benchmarks` workflow
+  runs any size (including `large`) on GitHub's runners.
+- Findings (medium size, 149 MB per copy): time 0.66-1.12x MNE (noise),
+  outputs identical; the pipeline holds about one extra copy of the data
+  (464 vs 316 MB) because each step copies; `recording_quality` peaks at
+  about 5 copies. Both are optimisation candidates for a later change, with
+  the benchmark guarding that outputs stay identical.
 
 ## Changes from the original roadmap
 

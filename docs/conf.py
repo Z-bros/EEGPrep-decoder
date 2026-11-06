@@ -51,8 +51,9 @@ html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 # Only the API reference has sub-pages; elsewhere the left sidebar would be empty.
-html_sidebars = {page: [] for page in ("index", "install", "guide/*", "examples/*",
-                                        "module-notes", "mne-behaviours", "validation", "ROADMAP")}
+html_sidebars = {page: [] for page in (
+    "index", "install", "guide/*", "examples/*", "module-notes", "mne-behaviours",
+    "validation", "benchmarks", "ROADMAP")}
 html_title = f"EEGPrep-decoder {release}"
 html_theme_options = {
     "github_url": "https://github.com/Z-bros/EEGPrep-decoder",

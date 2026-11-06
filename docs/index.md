@@ -57,5 +57,6 @@ api
 module-notes
 mne-behaviours
 validation
+benchmarks
 ROADMAP
 ```
